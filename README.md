@@ -122,6 +122,8 @@ NVIDIA does not officially support this port, compatibility varies by GPU, and t
 
 The intended input formats are XDVDFS ISO, an extracted game folder containing `Default.xex` and `Data`, and supported GOD/SVOD containers. A GOD source can also be selected through its `415608B2/00007000` folder.
 
+After a successful installation, the source ISO, GOD or extracted folder is no longer needed. The PC Edition runs entirely from the chosen destination and is not tied to the source drive letter. Saves and installer caches use the current Windows user's profile rather than a developer-specific path.
+
 **A container extension or header alone is not enough.** The current reader handles SVOD/GOD; it does not support every STFS package that happens to start with LIVE, PIRS or CON.
 
 **Supported donor revisions**
