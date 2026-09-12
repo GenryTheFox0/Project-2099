@@ -1,0 +1,132 @@
+# Spider-Man: Edge of Time — PC Edition: Installation
+
+> **Zwei Epochen. Ein Schicksal.**
+
+[English](INSTALL_EN.md) · [Русский](INSTALL_RU.md) · [Deutsch](INSTALL_DE.md) · [Français](INSTALL_FR.md) · [Italiano](INSTALL_IT.md) · [Español](INSTALL_ES.md)
+
+## Was muss heruntergeladen werden?
+
+Für die normale Online-Installation wird nur diese Datei benötigt:
+
+- `EOTInstaller-v1.0.0-beta.2.exe`
+
+Der Installer lädt `EOT-PC-Payload-v1.0.0-beta.2.zip` automatisch herunter, setzt eine unterbrochene Übertragung fort und prüft Größe sowie SHA-256 vor dem Entpacken.
+
+Die übrigen Dateien im Release:
+
+- `EOT-PC-Payload-v1.0.0-beta.2.zip` — Komponenten und Patches der PC Edition; für die normale Installation ist kein manueller Download nötig;
+- `SHA256SUMS.txt` — Prüfsummen für Installer und Payload;
+- `release-manifest.json` — Version, Größen, Hashes und unterstützte Ausgangsversionen;
+- `Source code` — Quellcode des Installers, keine spielbare Kopie.
+
+## Normale Installation
+
+1. `EOTInstaller-v1.0.0-beta.2.exe` vom [offiziellen Projekt-Release](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/tag/v1.0.0-beta.2) herunterladen.
+2. Den Installer starten.
+3. Sprache für Installer und Spiel auswählen.
+4. Download und Prüfung der PC-Edition-Komponenten abwarten.
+5. Eine kompatible eigene Xbox-360-Quelle auswählen:
+   - europäische Retail-XDVDFS-ISO;
+   - entpackter Spielordner mit `Default.xex` und `Data`;
+   - getesteter alternativer russischer GOD/LIVE/XSF über den Ordner `415608B2/00007000`.
+6. Einen leeren Zielordner auswählen, zum Beispiel `D:\Games\Spider-Man Edge of Time PC Edition`.
+7. INSTALLIEREN drücken und die abschließende Prüfung abwarten.
+8. Das installierte Spiel über `Launcher.exe` starten.
+
+Nicht direkt in ein Laufwerksstammverzeichnis wie `D:\` und nicht über eine ältere, bereits gefüllte Installation installieren. Ein eigener leerer Ordner verhindert vermischte Dateien verschiedener Versionen.
+
+Nach erfolgreicher Installation werden ISO, GOD oder der entpackte Konsolenordner nicht mehr benötigt. Die PC Edition läuft vollständig aus dem Zielordner und hängt nicht vom ursprünglichen Laufwerksbuchstaben ab.
+
+## Offline-Installation
+
+1. Beide Dateien herunterladen:
+   - `EOTInstaller-v1.0.0-beta.2.exe`;
+   - `EOT-PC-Payload-v1.0.0-beta.2.zip`.
+2. Einen eigenen Ordner für den Installer anlegen.
+3. Das ZIP neben der EXE entpacken. Die Struktur muss so aussehen:
+
+```text
+EOT GitHub Installer\
+├── EOTInstaller-v1.0.0-beta.2.exe
+└── payload\
+    ├── payload-manifest.json
+    ├── port\
+    └── patches\
+```
+
+4. Die EXE starten. Der Installer erkennt und prüft den lokalen Ordner `payload`, ohne das Archiv erneut herunterzuladen.
+
+`payload` nicht umbenennen und die enthaltenen Dateien nicht aus ihrer Ordnerstruktur herausziehen.
+
+## Unterstützte Ausgangsversionen
+
+- `eu-retail` — europäische Xbox-360-Retail-Version;
+- `ru-god-alt` — getestete alternative russische GOD/LIVE/XSF-Version.
+
+Eine Dateiendung oder ein `LIVE`-, `PIRS`- beziehungsweise `CON`-Header reicht nicht aus. Der Installer prüft echte Dateigrößen und SHA-256-Hashes. Unbekannte, gemischte oder veränderte Versionen werden abgelehnt, statt eine kaputte Installation zu erzeugen.
+
+## Dateien, Einstellungen und Speicherstände
+
+Der fertige Ordner enthält unter anderem `Launcher.exe`, `SpiderManEOT.exe`, `rexruntime.dll`, `spider_man_edge_of_time.toml`, beide Sprachdatenbäume und den Ordner `Support`. Der normale Einstieg ist `Launcher.exe`; zusätzliche BAT-Dateien sind nicht nötig.
+
+Einstellungen und Speicherstände:
+
+```text
+%USERPROFILE%\Documents\spider_man_edge_of_time
+```
+
+Download-Cache des Installers:
+
+```text
+%LOCALAPPDATA%\GenryTheFox\EOTInstaller
+```
+
+Nach erfolgreicher Installation benötigt das Spiel diesen Cache nicht. Er kann für eine schnellere Neuinstallation behalten oder zum Freigeben von Speicherplatz gelöscht werden.
+
+## Steuerung
+
+- Tastatur und Maus;
+- Bewegung mit WASD;
+- einstellbare Mausempfindlichkeit;
+- XInput-Controller;
+- automatische Anzeige für das aktive Eingabegerät;
+- QTE-Anzeigen: **B ↔ E** und **Y ↔ MMB**;
+- **MMB bedeutet einen Klick auf das Mausrad**, nicht das Scrollen.
+
+## SmartScreen und Prüfsummen
+
+Der Installer besitzt derzeit kein kommerzielles Codesignatur-Zertifikat. Windows SmartScreen kann deshalb bei einer neuen EXE warnen. Nur vom offiziellen GitHub-Release herunterladen und bei Bedarf prüfen:
+
+```powershell
+Get-FileHash .\EOTInstaller-v1.0.0-beta.2.exe -Algorithm SHA256
+```
+
+Installer: `B5E66317CAD4375CF08487FC145DA6388F455C204155E110A4CCD55E088829A1`
+
+Payload: `5651197BC6D093F7474047D37599E81E4EB6B7184EB03A245D688B80BCC314B8`
+
+## Bei Problemen
+
+- Installer erneut starten; eine unterbrochene `.part`-Datei wird über HTTP Range fortgesetzt.
+- Ein beschädigter Payload wird wegen falscher Größe oder SHA-256 abgelehnt.
+- Bei wiederholten Downloadfehlern den Installer schließen, `%LOCALAPPDATA%\GenryTheFox\EOTInstaller\downloads` löschen und erneut versuchen.
+- Bei einer abgelehnten Quelle Region und Revision kontrollieren.
+- Prüfung einer installierten Version:
+
+```powershell
+.\Launcher.exe --validate
+.\SpiderManEOT.exe --verify-install
+```
+
+## Bekannte Probleme der V1 Beta
+
+- Mikroruckler bei einigen Übergängen;
+- gelegentliche starke Hänger;
+- weiße Texturen oder weißes Rendering auf manchen integrierten Intel-GPUs;
+- weiße Elemente in Teilen des Einstellungsmenüs;
+- mögliche Audioprobleme auf schwächeren Systemen;
+- hardwareabhängiges Verhalten des experimentellen DLSS/ReShade-Pakets.
+
+Wenn die experimentelle Grafikoption Probleme verursacht, deaktivieren und den normalen D3D12-Modus verwenden.
+
+Kurz gesagt: Installer starten, eigene kompatible Xbox-360-Kopie auswählen, leeren Ordner angeben, Prüfung abwarten und `Launcher.exe` starten. Keine hundert BAT-Dateien und keine Bindung an fremde Laufwerke.

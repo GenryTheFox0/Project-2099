@@ -8,6 +8,7 @@
 <p align="center">
   <a href="https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases">Downloads</a> ·
   <a href="#installation">Installation</a> ·
+  <a href="INSTALLATION.md">Installation guides</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
   <a href="https://www.donationalerts.com/r/genrythefoxmax">DonationAlerts</a> ·
@@ -119,6 +120,10 @@ NVIDIA does not officially support this port, compatibility varies by GPU, and t
 3. Select a supported local Xbox 360 source.
 4. Choose an empty destination folder and complete installation.
 5. Start the installed `Launcher.exe`.
+
+For the normal online installation, download only `EOTInstaller-v1.0.0-beta.2.exe`; it retrieves and verifies the matching payload automatically. For an offline installation, download the payload ZIP too and extract its `payload` folder beside the installer.
+
+Installation guides: [English](INSTALL_EN.md) · [Русский](INSTALL_RU.md) · [Deutsch](INSTALL_DE.md) · [Français](INSTALL_FR.md) · [Italiano](INSTALL_IT.md) · [Español](INSTALL_ES.md)
 
 The intended input formats are XDVDFS ISO, an extracted game folder containing `Default.xex` and `Data`, and supported GOD/SVOD containers. A GOD source can also be selected through its `415608B2/00007000` folder.
 
