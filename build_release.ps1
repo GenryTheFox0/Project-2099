@@ -38,7 +38,8 @@ $release=[ordered]@{
   Schema=1;Version=$Version;Repository='https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition';
   Installer=[ordered]@{Name=$installerName;Size=$installerItem.Length;Sha256=$installerHash};
   Payload=[ordered]@{Name=$assetName;Size=$payloadItem.Length;Sha256=$payloadHash};
-  SupportedSources=@('eu-retail','ru-god-alt');GameAssetsIncluded=$false
+  SupportedSources=@('eu-retail','ru-god-alt');OriginalGameImageIncluded=$false;
+  ContainsGameDerivedPatchBytes=$true
 }
 [IO.File]::WriteAllText((Join-Path $artifacts 'release-manifest.json'),($release|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))
 $sums="$installerHash  $installerName`r`n$payloadHash  $assetName`r`n"
