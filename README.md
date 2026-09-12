@@ -11,6 +11,7 @@
   <a href="INSTALLATION.md">Installation guides</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
+  <a href="https://www.patreon.com/cw/GenryTheFox">Patreon</a> ·
   <a href="https://www.donationalerts.com/r/genrythefoxmax">DonationAlerts</a> ·
   <a href="https://donatepay.ru/don/1411886">DonatePay</a>
 </p>
@@ -228,6 +229,7 @@ The GPL covers the code I have the right to license. It does not magically turn 
 
 The PC Edition is free. If it gave you a good evening and you want to help me keep fighting freezes, paying for hosting and building more unreasonable ports, the links are below:
 
+- **[Patreon — support Edge of Time and future updates](https://www.patreon.com/cw/GenryTheFox)**
 - **[DonationAlerts](https://www.donationalerts.com/r/genrythefoxmax)**
 - **[DonatePay](https://donatepay.ru/don/1411886)**
 
