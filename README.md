@@ -9,6 +9,7 @@
   <a href="https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases">Downloads</a> ·
   <a href="#installation">Installation</a> ·
   <a href="INSTALLATION.md">Installation guides</a> ·
+  <a href="POST_EOT_COLLAB_BETA3_EN.md">Development diary</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
   <a href="https://www.patreon.com/cw/GenryTheFox">Patreon</a> ·
@@ -213,6 +214,8 @@ Third-party authors retain their own credits and licenses. See [THIRD_PARTY_LICE
 That is the target for V2. I am not promising miracles across every possible PC, but these are the problems I intend to attack at the foundation.
 
 ## Other projects
+
+Latest development diary: [English](POST_EOT_COLLAB_BETA3_EN.md) · [Русский](POST_EOT_COLLAB_BETA3_RU.md)
 
 Other work already on the table:
 
