@@ -1,45 +1,92 @@
-**🕷 GENRY WAREHOUSE | EDGE OF TIME PC EDITION — BETA 3 AND THE REEOT SITUATION**
+🕷 GENRY WAREHOUSE | EDGE OF TIME PC EDITION DEVELOPMENT DIARY — BETA 3
 
-**The last 24 hours went much further than I expected, so I want to close the confusion without turning this into another twenty-page technical wall.**
+More happened around Spider-Man: Edge of Time PC Edition during the last day than I expected from its first public release, so I want to record the current situation properly — without a team war, without arguing about which port is “real,” and without pretending that a beta is already a perfect final build.
 
-**Spider-Man: Edge of Time PC Edition and EdgeOfTime-Recompiled (`reeot`) were developed independently. My build was not taken from reeot, and reeot was not taken from mine. Nothing leaked. Two groups simply approached the same Xbox 360 game from very different directions.**
+First, the situation with EdgeOfTime-Recompiled, also known as `reeot`.
 
-**The reeot team has spent far longer reverse-engineering the game itself: its renderer, PKZ format, shaders, internal systems, debug functions and future modding support. My work grew around the PC-facing side: a public playable build, launcher, installer, keyboard and mouse, rebinding, dynamic QTE prompts, localization, Cyrillic fonts, achievements and release packaging.**
+My PC Edition and `reeot` were developed independently. I did not use their private code, and their project is not based on mine. We simply approached the same game from different directions.
 
-**After they found my release, I spoke directly with Graine25 and SerJar. The initial surprise could have turned into a stupid “AI port versus real port” shitshow, but it did not. We exchanged builds, started comparing our work and are now discussing where the useful parts of both projects can fit together.**
+The `reeot` team has spent far longer researching the game itself: reverse engineering, the renderer, PKZ files, shaders, debug features and future modding tools. My work grew around the user-facing PC side: a playable build, launcher, installer, keyboard and mouse, rebinding, dynamic QTE prompts, localization, Cyrillic fonts, achievements and full campaign testing.
 
-**Please do not harass either team and do not invent a leak or theft story. There is no fucking war here. There are two independent projects and a real attempt to cooperate.**
+When the `reeot` developers found my release, the first reaction was tense, which is understandable. They have invested a huge amount of time in this game, and another public PC Edition suddenly appeared beside their work. I spoke directly with Graine25 and SerJar, we exchanged builds and started comparing our approaches. Instead of another fucking argument, there is now a real opportunity to help each other.
 
-**My public repository and V1 Beta are staying online for now. People are already using the build, sending reports and following links from articles. Deleting the repository overnight would erase the public history and break the existing release.**
+Please do not harass either side and do not invent a leak or theft story. There was none.
 
-**That does not mean I am refusing a unified future. I am joining the development conversation first. If the collaboration works well, the code and features combine properly, and everyone’s contributions remain credited, then having one stronger project may be the best result. We will decide that through actual work, not through panic on the first night.**
+My GitHub repository and V1 Beta are staying online for now. People are already using the build, articles point to it, and reports from different hardware are exposing problems I could not reproduce alone. Deleting the repository overnight would erase that history and break every existing link.
 
-**At the same time, I am releasing installer hotfix `v1.0.0-beta.3`.**
+I am still interested in cooperation. We will first see how actual joint development goes. If our systems fit together, everyone’s contributions remain credited, and one combined result becomes stronger than two separate branches, that would be fucking great. We can then decide calmly what a unified future should look like. I am not making dramatic merger promises on the first night.
 
-**Beta 3 fixes the main source-selection problem:**
+Now for beta.3 itself.
 
-— the common Spider-Man: Edge of Time **USA/Europe Xbox 360 ISO** is accepted;
+After release, users reported that the installer accepted the alternate Russian GOD source but rejected the common `Spider-Man - Edge of Time (USA Europe)` archive. Others had to extract the game manually and click through duplicate wrapper folders before reaching `Default.xex`.
 
-— a complete game **ZIP can be selected directly** without manual extraction;
+The cause was specific. The old manifest labeled `eu-retail` had been generated from an already prepared original-language PC Edition tree rather than the common clean USA/Europe file set. The Xbox 360 `Default.xex` was correct, but localized files such as `Main.pkz` and `Act01.pkz` differed, so the installer rejected the source.
 
-— the ZIP may contain an outer `Spider-Man - Edge of Time (USA Europe)` folder;
+Beta 3 adds a dedicated USA/Europe donor and its own reconstruction path.
 
-— selecting the outer folder is enough; the installer finds `Default.xex` automatically;
+The installer can now:
 
-— a folder containing one ISO or ZIP is detected automatically;
+— open a USA/Europe Xbox 360 ISO directly;
 
-— the existing Russian GOD/`00007000` source still works;
+— open a complete game ZIP without manual extraction;
 
-— USA/Europe now has its own reconstruction path to the same final Original and Russian PC Edition data.
+— detect a game stored inside an outer `Spider-Man - Edge of Time (USA Europe)` folder in the ZIP;
 
-**This is an installer compatibility patch. It does not magically remove the remaining V1 runtime problems: microstutter, occasional heavy freezes, frame pacing and some Intel rendering issues are still being investigated.**
+— search one or two levels below a selected outer directory;
 
-**Project:**
-[https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition)
+— open the only ISO or ZIP found inside a selected folder;
 
-**reeot:**
-[https://github.com/goliathret/reeot](https://github.com/goliathret/reeot)
+— continue accepting the Russian GOD/`415608B2/00007000` source.
 
-**So that is the situation. My project is not being erased. Their work is not being ignored. We are looking at each other’s code and taking the good shit instead of sitting in separate corners guessing. If the collaboration goes well, that will be fucking great for everyone who wants a real Edge of Time PC release.**
+The installer finds `Default.xex`, identifies the compatible structure and reconstructs the same final `Data/Original` and `Data/Russian` trees. Users no longer need to guess which duplicate folder level is the real game root.
 
-**Two eras. One destiny. Apparently two recompilation projects too.**
+This was tested with the actual 5.075 GB USA/Europe ZIP, not only a tiny mock archive. The complete PC Edition was built from it successfully.
+
+Final verification:
+
+— `Launcher.exe --validate` returned 0;
+
+— `SpiderManEOT.exe --verify-install` returned 0;
+
+— all 293 Original files matched;
+
+— all 293 Russian files matched;
+
+— the Russian GOD source still passed after the change;
+
+— normal XISO, the missing XGD offset and fallback partition scanning were tested separately;
+
+— the source page was rendered and checked in English, Russian, German, French, Italian and Spanish.
+
+Beta 3 is an installer compatibility hotfix. It does not replace the game runtime, remove saves or roll back graphics and controls. Its job is to stop making users fight ISO layouts, ZIP extraction and duplicate wrapper folders.
+
+The remaining V1 issues are still real:
+
+— microstutter during some transitions;
+
+— occasional severe freezes;
+
+— frame-pacing problems;
+
+— white materials or frames on some Intel integrated GPUs;
+
+— scene-dependent 75/120 FPS behavior;
+
+— remaining visual differences from the Xbox 360 original.
+
+Those are targets for continued development. At the same time, I am beginning to study the `reeot` material while sharing my PC controls, QTE, localization, font, launcher and other user-facing work with their team.
+
+My project:
+https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition
+
+EdgeOfTime-Recompiled / reeot:
+https://github.com/goliathret/reeot
+
+Support continued development:
+Patreon: https://www.patreon.com/cw/GenryTheFox
+DonationAlerts: https://www.donationalerts.com/r/genrythefoxmax
+DonatePay: https://donatepay.ru/don/1411886
+
+In short: V1 stays online, beta.3 fixes USA/Europe installation, the conflict has become a development conversation, and the next step depends on the actual results of cooperation. If two different approaches eventually produce one stronger port, then this unexpected mess was worth something after all.
+
+Two eras. One destiny.
