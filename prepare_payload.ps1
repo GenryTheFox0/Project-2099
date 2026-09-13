@@ -2,7 +2,8 @@ param(
   [Parameter(Mandatory=$true)][string]$ReleaseRoot,
   [Parameter(Mandatory=$true)][string]$OriginalRoot,
   [Parameter(Mandatory=$true)][string]$RussianRoot,
-  [Parameter(Mandatory=$true)][string]$AlternateGodRoot
+  [Parameter(Mandatory=$true)][string]$AlternateGodRoot,
+  [Parameter(Mandatory=$true)][string]$UsaEuropeRoot
 )
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
@@ -10,15 +11,18 @@ $release=[IO.Path]::GetFullPath($ReleaseRoot)
 $original=[IO.Path]::GetFullPath($OriginalRoot)
 $russian=[IO.Path]::GetFullPath($RussianRoot)
 $alternate=[IO.Path]::GetFullPath($AlternateGodRoot)
+$usa=[IO.Path]::GetFullPath($UsaEuropeRoot)
 $payload=Join-Path $root 'payload'
 $port=Join-Path $payload 'port'
 $patches=Join-Path $payload 'patches'
 $euManifest=Join-Path $root 'manifests\source-manifest-eu.json'
 $godManifest=Join-Path $root 'manifests\source-manifest-ru-god.json'
+$usaManifest=Join-Path $root 'manifests\source-manifest-usa-europe.json'
 if(-not(Test-Path -LiteralPath "$release\Launcher.exe")){throw 'ReleaseRoot is not a PC Edition release'}
 if(-not(Test-Path -LiteralPath "$original\Default.xex")){throw 'OriginalRoot has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$russian\Default.xex")){throw 'RussianRoot has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$alternate\Default.xex")){throw 'AlternateGodRoot has no Default.xex'}
+if(-not(Test-Path -LiteralPath "$usa\Default.xex")){throw 'UsaEuropeRoot has no Default.xex'}
 
 & "$root\build_tools.ps1"
 if($LASTEXITCODE){throw 'Tool build failed'}
@@ -56,11 +60,13 @@ foreach($language in @('Original','Russian')){
 if($LASTEXITCODE){throw 'Source manifest generation failed'}
 & "$root\build\tools\BuildGameManifest.exe" $alternate $godManifest 'ru-god-alt' 'Xbox 360 Russian alternate GOD (LIVE/XSF)'
 if($LASTEXITCODE){throw 'Alternate source manifest generation failed'}
+& "$root\build\tools\BuildGameManifest.exe" $usa $usaManifest 'usa-europe-retail' 'Xbox 360 USA / Europe retail donor'
+if($LASTEXITCODE){throw 'USA/Europe source manifest generation failed'}
 & "$root\build\tools\BuildPayloadManifest.exe" $port "$payload\payload-manifest.json"
 if($LASTEXITCODE){throw 'Payload manifest generation failed'}
 
-$euPatches=Join-Path $patches 'eu-retail';$godPatches=Join-Path $patches 'ru-god-alt'
-New-Item -ItemType Directory -Force -Path $euPatches,$godPatches | Out-Null
+$euPatches=Join-Path $patches 'eu-retail';$godPatches=Join-Path $patches 'ru-god-alt';$usaPatches=Join-Path $patches 'usa-europe-retail'
+New-Item -ItemType Directory -Force -Path $euPatches,$godPatches,$usaPatches | Out-Null
 & "$root\build\tools\BuildEotpPatches.exe" $euManifest $original $original $euPatches 'original.json' 'EU donor to clean Original'
 if($LASTEXITCODE){throw 'EU Original delta generation failed'}
 & "$root\build\tools\BuildEotpPatches.exe" $euManifest $original $russian $euPatches 'russian.json' 'EU donor to final Russian PC Edition'
@@ -69,5 +75,9 @@ if($LASTEXITCODE){throw 'EU Russian delta generation failed'}
 if($LASTEXITCODE){throw 'GOD Original delta generation failed'}
 & "$root\build\tools\BuildEotpPatches.exe" $godManifest $alternate $russian $godPatches 'russian.json' 'Alternate Russian GOD to final Russian PC Edition'
 if($LASTEXITCODE){throw 'GOD Russian delta generation failed'}
+& "$root\build\tools\BuildEotpPatches.exe" $usaManifest $usa $original $usaPatches 'original.json' 'USA/Europe retail donor to clean Original'
+if($LASTEXITCODE){throw 'USA/Europe Original delta generation failed'}
+& "$root\build\tools\BuildEotpPatches.exe" $usaManifest $usa $russian $usaPatches 'russian.json' 'USA/Europe retail donor to final Russian PC Edition'
+if($LASTEXITCODE){throw 'USA/Europe Russian delta generation failed'}
 
 Write-Output "Payload ready: $payload"

@@ -16,7 +16,9 @@ namespace EotInstaller {
   public sealed class XdvdfsImage : IDisposable {
     const int SectorSize = 2048;
     static readonly long[] PossibleOffsets = {
-      0x00000000L, 0x0000FB20L, 0x00020600L, 0x02080000L, 0x0FD90000L
+      0x00000000L, 0x0000FB20L, 0x00010600L, 0x00020600L,
+      0x02070000L, 0x02080000L, 0x0FD80000L, 0x0FD90000L,
+      0x182F0000L, 0x18300000L
     };
     static readonly byte[] Magic = Encoding.ASCII.GetBytes("MICROSOFT*XBOX*MEDIA");
 
@@ -79,17 +81,56 @@ namespace EotInstaller {
     }
 
     long FindGameOffset(FileStream stream) {
-      var buffer = new byte[Magic.Length];
       foreach (long candidate in PossibleOffsets) {
-        long offset = candidate + 32L * SectorSize;
-        if (offset < 0 || offset + buffer.Length > imageLength) continue;
-        stream.Position = offset;
-        ReadExactly(stream, buffer, 0, buffer.Length);
-        bool same = true;
-        for (int i = 0; i < Magic.Length; i++) if (buffer[i] != Magic[i]) { same = false; break; }
-        if (same) return candidate;
+        if (HasValidVolumeDescriptor(stream, candidate)) return candidate;
       }
-      throw new InvalidDataException("MICROSOFT*XBOX*MEDIA was not found. This is not a supported Xbox 360 XDVDFS image.");
+      long scanned = ScanForGameOffset(stream);
+      if (scanned >= 0) return scanned;
+      throw new InvalidDataException(
+        "MICROSOFT*XBOX*MEDIA was not found in the Xbox 360 disc area. Select the original USA/Europe XDVDFS ISO, not a PS3 ISO, archive or shortcut.");
+    }
+
+    bool HasValidVolumeDescriptor(FileStream stream, long candidate) {
+      long descriptor = candidate + 32L * SectorSize;
+      if (candidate < 0 || descriptor < 0 || descriptor + 28 > imageLength) return false;
+      var buffer = new byte[Magic.Length];
+      stream.Position = descriptor;
+      ReadExactly(stream, buffer, 0, buffer.Length);
+      for (int i = 0; i < Magic.Length; i++) if (buffer[i] != Magic[i]) return false;
+      uint rootSector = ReadUInt32(stream, descriptor + 20);
+      uint rootSize = ReadUInt32(stream, descriptor + 24);
+      if (rootSize < 13 || rootSize > 32U * 1024U * 1024U) return false;
+      long rootOffset;
+      try { rootOffset = checked(candidate + (long)rootSector * SectorSize); }
+      catch (OverflowException) { return false; }
+      return rootOffset >= 0 && rootOffset <= imageLength && rootSize <= imageLength - rootOffset;
+    }
+
+    long ScanForGameOffset(FileStream stream) {
+      const int ChunkSize = 1024 * 1024;
+      long scanLength = Math.Min(imageLength, 512L * 1024L * 1024L);
+      var buffer = new byte[ChunkSize + Magic.Length - 1];
+      int carry = 0;
+      long position = 0;
+      while (position < scanLength) {
+        stream.Position = position;
+        int wanted = (int)Math.Min(ChunkSize, scanLength - position);
+        int read = stream.Read(buffer, carry, wanted);
+        if (read <= 0) break;
+        int total = carry + read;
+        for (int i = 0; i <= total - Magic.Length; i++) {
+          bool same = true;
+          for (int j = 0; j < Magic.Length; j++) if (buffer[i + j] != Magic[j]) { same = false; break; }
+          if (!same) continue;
+          long magicOffset = position - carry + i;
+          long candidate = magicOffset - 32L * SectorSize;
+          if (HasValidVolumeDescriptor(stream, candidate)) return candidate;
+        }
+        carry = Math.Min(Magic.Length - 1, total);
+        Buffer.BlockCopy(buffer, total - carry, buffer, 0, carry);
+        position += read;
+      }
+      return -1;
     }
 
     void ParseDirectory(FileStream stream, string prefix, long tableOffset, long tableSize,

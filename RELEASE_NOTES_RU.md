@@ -5,7 +5,13 @@
 <h1 align="center">Spider-Man: Edge of Time — PC Edition</h1>
 <p align="center"><strong>ДВЕ ЭПОХИ. ОДНА СУДЬБА.</strong></p>
 
-## V1 Beta 2 вышла
+## V1 Beta 3 — installer hotfix
+
+> **Обновление beta.3:** исправлен главный проёб установщика с USA/Europe-источником. Теперь можно выбрать обычный Xbox 360 ISO, ZIP целиком или внешнюю папку `Spider-Man - Edge of Time (USA Europe)` — инсталлер сам найдёт вложенный корень с `Default.xex`. Русский GOD/`00007000` продолжает работать. Это микропатч установщика; графика, управление и сохранения самой PC Edition не откатывались.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/main/assets/installer-beta3-source-usa-zip.png" width="1100" alt="Beta 3 USA Europe ISO ZIP source selection">
+</p>
 
 У **Spider-Man: Edge of Time** никогда не было официальной версии для Windows. Игра вышла на Xbox 360, PlayStation 3, Wii, Nintendo DS и Nintendo 3DS, а PC снова остался смотреть на всё это через стекло.
 
@@ -19,13 +25,13 @@
 
 Для обычной установки скачайте только:
 
-### [СКАЧАТЬ EOTInstaller-v1.0.0-beta.2.exe](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/download/v1.0.0-beta.2/EOTInstaller-v1.0.0-beta.2.exe)
+### [СКАЧАТЬ EOTInstaller-v1.0.0-beta.3.exe](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/download/v1.0.0-beta.3/EOTInstaller-v1.0.0-beta.3.exe)
 
-Инсталлер сам загрузит 974-МБ пакет PC Edition, продолжит оборванную загрузку и проверит его SHA-256. Вручную скачивать payload для обычной установки не требуется.
+Инсталлер сам загрузит пакет PC Edition размером около 1,22 ГБ, продолжит оборванную загрузку и проверит его SHA-256. Вручную скачивать payload для обычной установки не требуется.
 
 1. Запустите установщик.
 2. Выберите язык.
-3. Укажите собственный совместимый Xbox 360 ISO, GOD/`00007000` или распакованную папку с `Default.xex` и `Data`.
+3. Укажите USA/Europe Xbox 360 ISO, ZIP, GOD/`00007000` или даже внешнюю папку игры. Инсталлер сам найдёт вложенный каталог с `Default.xex` и `Data`.
 4. Выберите отдельную пустую папку — не корень диска и не старую сборку.
 5. Дождитесь сборки и проверки.
 6. Запускайте готовую игру через `Launcher.exe`.
@@ -187,7 +193,8 @@ PC Edition поддерживает не только геймпад:
 
 Сейчас установщик распознаёт:
 
-- `eu-retail` — европейский retail XDVDFS ISO или соответствующую распакованную папку;
+- `usa-europe-retail` — распространённый USA/Europe Xbox 360 ISO, ZIP либо распакованную папку;
+- `eu-retail` — старую original-language базу PC Edition для обратной совместимости;
 - `ru-god-alt` — проверенный альтернативный русский GOD/LIVE/XSF.
 
 Расширение файла или надпись `LIVE`, `PIRS`, `CON` сами по себе ничего не гарантируют. Инсталлер сверяет размеры и SHA-256. Другой регион, модифицированный образ или смесь файлов будут отклонены вместо создания битой игры.
@@ -249,7 +256,7 @@ PC Edition остаётся бесплатной. Релиз, фиксы и бу
 ## Для тех, кому нужны цифры и проверки
 
 <details>
-<summary><strong>Открыть технические результаты beta.2</strong></summary>
+<summary><strong>Открыть технические результаты beta.3</strong></summary>
 
 - реальный GOD `8C4F0345B522B738FAB7` распакован: 296 файлов за 10,59 секунды;
 - полная PC Edition собрана из него за 33,99 секунды;
@@ -268,13 +275,13 @@ PC Edition остаётся бесплатной. Релиз, фиксы и бу
 **SHA-256 установщика:**
 
 ```text
-B5E66317CAD4375CF08487FC145DA6388F455C204155E110A4CCD55E088829A1
+C0462B2C31F841DF0323DE6226EA5CB4E451C85EBF4C29F77974887CF1F8E5FF
 ```
 
 **SHA-256 payload:**
 
 ```text
-5651197BC6D093F7474047D37599E81E4EB6B7184EB03A245D688B80BCC314B8
+13B88F7F6B26D00D97290707008986D7E9A25ED91F2458D50BA631D654EA804D
 ```
 
 </details>

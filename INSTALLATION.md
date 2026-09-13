@@ -9,4 +9,4 @@ Choose your language:
 - [Italiano](INSTALL_IT.md)
 - [Español](INSTALL_ES.md)
 
-All six guides describe the same `v1.0.0-beta.2` installer, supported Xbox 360 sources, online and offline installation, controls, file verification and current V1 Beta limitations.
+All six guides describe the same `v1.0.0-beta.3` installer, supported Xbox 360 sources, online and offline installation, controls, file verification and current V1 Beta limitations.

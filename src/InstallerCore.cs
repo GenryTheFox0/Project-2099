@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -69,8 +70,88 @@ namespace EotInstaller {
     public void Dispose() { image.Dispose(); }
   }
 
+  sealed class ZipGameSource : IGameSource {
+    readonly string zipPath;
+    readonly FileStream stream;
+    readonly ZipArchive archive;
+    readonly Dictionary<string, ZipArchiveEntry> entries =
+      new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+    readonly string rootPrefix;
+
+    public ZipGameSource(string path) {
+      zipPath = Path.GetFullPath(path);
+      if (!File.Exists(zipPath)) throw new FileNotFoundException("ZIP not found", zipPath);
+      stream = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+        1024 * 1024, FileOptions.SequentialScan);
+      try {
+        archive = new ZipArchive(stream, ZipArchiveMode.Read, true, Encoding.UTF8);
+        var rawEntries = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (ZipArchiveEntry entry in archive.Entries) {
+          string raw = entry.FullName.Replace('\\', '/').TrimStart('/');
+          if (raw.Length == 0 || raw.EndsWith("/", StringComparison.Ordinal)) continue;
+          string normalized = InstallerCore.NormalizeRelative(raw);
+          if (rawEntries.ContainsKey(normalized)) throw new InvalidDataException("Duplicate ZIP path: " + normalized);
+          rawEntries.Add(normalized, entry);
+        }
+
+        var roots = new List<string>();
+        foreach (string name in rawEntries.Keys) {
+          const string marker = "Default.xex";
+          if (!name.EndsWith(marker, StringComparison.OrdinalIgnoreCase)) continue;
+          int markerIndex = name.Length - marker.Length;
+          if (markerIndex != 0 && name[markerIndex - 1] != '/') continue;
+          string prefix = name.Substring(0, markerIndex);
+          if (rawEntries.ContainsKey(prefix + "Data/Main.pkz")) roots.Add(prefix);
+        }
+        roots = roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (roots.Count == 0) throw new InvalidDataException(
+          "ZIP не содержит корень Xbox 360-игры с Default.xex и Data/Main.pkz");
+        if (roots.Count > 1) throw new InvalidDataException(
+          "ZIP содержит несколько игровых корней. Оставь в архиве одну копию Spider-Man: Edge of Time");
+        rootPrefix = roots[0];
+
+        foreach (var pair in rawEntries) {
+          if (!pair.Key.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+          string relative = pair.Key.Substring(rootPrefix.Length);
+          if (relative.Length == 0) continue;
+          relative = InstallerCore.NormalizeRelative(relative);
+          if (entries.ContainsKey(relative)) throw new InvalidDataException("Duplicate game path in ZIP: " + relative);
+          entries.Add(relative, pair.Value);
+        }
+      } catch {
+        if (archive != null) archive.Dispose();
+        stream.Dispose();
+        throw;
+      }
+    }
+
+    public string Kind { get { return "zip-game"; } }
+    public string Name {
+      get {
+        string folder = rootPrefix.TrimEnd('/');
+        return Path.GetFileName(zipPath) + (folder.Length == 0 ? "" : " / " + folder);
+      }
+    }
+    public bool Exists(string relativePath) { return entries.ContainsKey(InstallerCore.NormalizeRelative(relativePath)); }
+    public long GetLength(string relativePath) {
+      ZipArchiveEntry entry;
+      return entries.TryGetValue(InstallerCore.NormalizeRelative(relativePath), out entry) ? entry.Length : -1;
+    }
+    public Stream OpenRead(string relativePath) {
+      ZipArchiveEntry entry;
+      if (!entries.TryGetValue(InstallerCore.NormalizeRelative(relativePath), out entry))
+        throw new FileNotFoundException("File not present in ZIP", relativePath);
+      return entry.Open();
+    }
+    public void Dispose() { archive.Dispose(); stream.Dispose(); }
+  }
+
   public sealed class InstallerCore {
-    static readonly string[] EmbeddedManifests = { "EOT.source-manifest.eu.json", "EOT.source-manifest.ru-god.json" };
+    static readonly string[] EmbeddedManifests = {
+      "EOT.source-manifest.eu.json",
+      "EOT.source-manifest.ru-god.json",
+      "EOT.source-manifest.usa-europe.json"
+    };
     const int BufferSize = 1024 * 1024;
     readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue, RecursionLimit = 32 };
     readonly List<GameManifest> gameManifests = new List<GameManifest>();
@@ -132,13 +213,80 @@ namespace EotInstaller {
       return value;
     }
 
+    static bool IsDirectoryGameRoot(string path) {
+      return Directory.Exists(path) && File.Exists(Path.Combine(path, "Default.xex")) &&
+        Directory.Exists(Path.Combine(path, "Data"));
+    }
+
+    static string[] GetChildDirectories(string path) {
+      try { return Directory.GetDirectories(path); }
+      catch (UnauthorizedAccessException) { return new string[0]; }
+      catch (IOException) { return new string[0]; }
+    }
+
+    static bool SkipWrapperDirectory(string path) {
+      string name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+      return String.Equals(name, "Data", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(name, "video", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(name, "$SystemUpdate", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(name, "Support", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(name, "payload", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(name, "patches", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(name, ".git", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static string FindDirectoryGameRoot(string selectedPath) {
+      if (!Directory.Exists(selectedPath)) return null;
+      string selected = Path.GetFullPath(selectedPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+      if (IsDirectoryGameRoot(selected)) return selected;
+
+      var matches = new List<string>();
+      int inspected = 0;
+      foreach (string child in GetChildDirectories(selected).Take(64)) {
+        if (++inspected > 128) break;
+        if (IsDirectoryGameRoot(child)) matches.Add(Path.GetFullPath(child));
+        if (SkipWrapperDirectory(child)) continue;
+        foreach (string grandchild in GetChildDirectories(child).Take(32)) {
+          if (++inspected > 128) break;
+          if (IsDirectoryGameRoot(grandchild)) matches.Add(Path.GetFullPath(grandchild));
+        }
+        if (inspected > 128) break;
+      }
+      matches = matches.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+      if (matches.Count == 1) return matches[0];
+      if (matches.Count > 1) throw new InvalidDataException(
+        "В выбранной папке найдено несколько копий игры. Выбери нужную папку с Default.xex: " +
+        String.Join("; ", matches.Select(Path.GetFileName)));
+      return null;
+    }
+
+    static string FindSinglePackagedSource(string selectedPath) {
+      if (!Directory.Exists(selectedPath)) return null;
+      string[] files;
+      try {
+        files = Directory.GetFiles(selectedPath).Where(file => {
+          string extension = Path.GetExtension(file);
+          return String.Equals(extension, ".iso", StringComparison.OrdinalIgnoreCase) ||
+            String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase);
+        }).Take(3).ToArray();
+      } catch (UnauthorizedAccessException) { return null; }
+      catch (IOException) { return null; }
+      return files.Length == 1 ? files[0] : null;
+    }
+
     IGameSource OpenSource(string path) {
-      if (Directory.Exists(path) && File.Exists(Path.Combine(path, "Default.xex"))) return new DirectoryGameSource(path);
+      string gameRoot = FindDirectoryGameRoot(path);
+      if (gameRoot != null) return new DirectoryGameSource(gameRoot);
       string container;
       if (SvodImage.TryFindContainer(path, out container)) return new SvodGameSource(container);
-      if (File.Exists(path) && String.Equals(Path.GetExtension(path), ".iso", StringComparison.OrdinalIgnoreCase))
-        return new IsoGameSource(path);
-      throw new InvalidDataException("Выбери Xbox 360 ISO, GOD/00007000 или папку с Default.xex");
+      string packaged = File.Exists(path) ? Path.GetFullPath(path) : FindSinglePackagedSource(path);
+      if (packaged != null) {
+        string extension = Path.GetExtension(packaged);
+        if (String.Equals(extension, ".iso", StringComparison.OrdinalIgnoreCase)) return new IsoGameSource(packaged);
+        if (String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)) return new ZipGameSource(packaged);
+      }
+      throw new InvalidDataException(
+        "Выбери Xbox 360 USA/Europe ISO, ZIP, GOD/00007000 или внешнюю папку, внутри которой находится Default.xex и каталог Data");
     }
 
     public Task<SourceProbe> ProbeAsync(string sourcePath, Action<InstallProgress> progress,
