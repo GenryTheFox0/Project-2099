@@ -12,7 +12,7 @@ sealed class GameManifest {
   public string Id = "eu-retail";
   public string Title = "Spider-Man: Edge of Time";
   public string TitleId = "415608B2";
-  public string Region = "Xbox 360 EU retail donor";
+  public string Region = "PC Edition original-language baseline (legacy folder donor)";
   public List<string> QuickChecks = new List<string> { "Default.xex", "Data/Main.pkz", "Data/Act01.pkz" };
   public List<ManifestFile> Files = new List<ManifestFile>();
 }

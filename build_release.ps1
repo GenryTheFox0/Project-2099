@@ -1,4 +1,4 @@
-param([string]$Version='v1.0.0-beta.1')
+param([string]$Version='v1.0.0-beta.3')
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
 $payload=Join-Path $root 'payload'
@@ -27,18 +27,19 @@ $channelObject=[ordered]@{Schema=1;Version=$Version;PayloadUrl=$payloadUrl;Paylo
 $channelText=$channelObject|ConvertTo-Json -Compress
 [IO.File]::WriteAllText($channel,$channelText,[Text.UTF8Encoding]::new($false))
 
-& "$root\build.ps1"
+$releaseBuild=Join-Path $root ('build\release-'+($Version -replace '[^A-Za-z0-9._-]','_'))
+& "$root\build.ps1" -OutDir $releaseBuild
 if($LASTEXITCODE){throw 'Final installer build failed'}
 $installerName="EOTInstaller-$Version.exe"
 $installer=Join-Path $artifacts $installerName
-Copy-Item -LiteralPath "$root\build\EOTInstaller.exe" -Destination $installer -Force
+Copy-Item -LiteralPath "$releaseBuild\EOTInstaller.exe" -Destination $installer -Force
 $installerItem=Get-Item -LiteralPath $installer
 $installerHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash
 $release=[ordered]@{
   Schema=1;Version=$Version;Repository='https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition';
   Installer=[ordered]@{Name=$installerName;Size=$installerItem.Length;Sha256=$installerHash};
   Payload=[ordered]@{Name=$assetName;Size=$payloadItem.Length;Sha256=$payloadHash};
-  SupportedSources=@('eu-retail','ru-god-alt');OriginalGameImageIncluded=$false;
+  SupportedSources=@('usa-europe-retail','eu-retail','ru-god-alt');OriginalGameImageIncluded=$false;
   ContainsGameDerivedPatchBytes=$true
 }
 [IO.File]::WriteAllText((Join-Path $artifacts 'release-manifest.json'),($release|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))

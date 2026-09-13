@@ -32,7 +32,11 @@ This public repository contains the **standalone installer and its tools**. The 
 
 ## Version and release status
 
-**V1 Beta — installer version `v1.0.0-beta.2`.**
+**V1 Beta — installer version `v1.0.0-beta.3`.**
+
+Beta 3 is an installer compatibility hotfix. It accepts the common USA/Europe Xbox 360 source directly as ISO or ZIP, finds a game root nested inside one or two outer folders, and keeps the existing Russian GOD path working. Users no longer have to unpack a ZIP or click through duplicate directory levels just to reach `Default.xex`.
+
+![Beta 3 USA Europe ISO and ZIP source selection](assets/installer-beta3-source-usa-zip.png)
 
 I have completed the story from beginning to end on the development setup. Other hardware can still expose bugs, especially in rendering and frame pacing.
 
@@ -122,11 +126,11 @@ NVIDIA does not officially support this port, compatibility varies by GPU, and t
 4. Choose an empty destination folder and complete installation.
 5. Start the installed `Launcher.exe`.
 
-For the normal online installation, download only `EOTInstaller-v1.0.0-beta.2.exe`; it retrieves and verifies the matching payload automatically. For an offline installation, download the payload ZIP too and extract its `payload` folder beside the installer.
+For the normal online installation, download only `EOTInstaller-v1.0.0-beta.3.exe`; it retrieves and verifies the matching payload automatically. For an offline installation, download the payload ZIP too and extract its `payload` folder beside the installer.
 
 Installation guides: [English](INSTALL_EN.md) · [Русский](INSTALL_RU.md) · [Deutsch](INSTALL_DE.md) · [Français](INSTALL_FR.md) · [Italiano](INSTALL_IT.md) · [Español](INSTALL_ES.md)
 
-The intended input formats are XDVDFS ISO, an extracted game folder containing `Default.xex` and `Data`, and supported GOD/SVOD containers. A GOD source can also be selected through its `415608B2/00007000` folder.
+The intended input formats are USA/Europe XDVDFS ISO, a ZIP containing the game root, an extracted folder containing `Default.xex` and `Data`, an outer folder containing one compatible game root, and supported GOD/SVOD containers. A GOD source can also be selected through its `415608B2/00007000` folder. If a selected directory contains one ISO or ZIP, the installer can open it automatically.
 
 After a successful installation, the source ISO, GOD or extracted folder is no longer needed. The PC Edition runs entirely from the chosen destination and is not tied to the source drive letter. Saves and installer caches use the current Windows user's profile rather than a developer-specific path.
 
@@ -134,9 +138,10 @@ After a successful installation, the source ISO, GOD or extracted folder is no l
 
 **Supported donor revisions**
 
-The installer recognizes two recorded file sets:
+The installer recognizes three recorded file sets:
 
-- `eu-retail`: the project's European baseline.
+- `usa-europe-retail`: the common unmodified USA/Europe Xbox 360 disc layout used by public ISO/ZIP copies.
+- `eu-retail`: the older PC Edition original-language baseline retained for compatibility.
 - `ru-god-alt`: the tested alternate Russian LIVE/XSF GOD.
 
 Unknown or mixed revisions are rejected. ISO parsing is implemented; the recorded full installation test used the supplied GOD, not a separately verified retail ISO.

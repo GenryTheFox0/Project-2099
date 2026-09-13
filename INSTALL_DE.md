@@ -8,26 +8,27 @@
 
 Für die normale Online-Installation wird nur diese Datei benötigt:
 
-- `EOTInstaller-v1.0.0-beta.2.exe`
+- `EOTInstaller-v1.0.0-beta.3.exe`
 
-Der Installer lädt `EOT-PC-Payload-v1.0.0-beta.2.zip` automatisch herunter, setzt eine unterbrochene Übertragung fort und prüft Größe sowie SHA-256 vor dem Entpacken.
+Der Installer lädt `EOT-PC-Payload-v1.0.0-beta.3.zip` automatisch herunter, setzt eine unterbrochene Übertragung fort und prüft Größe sowie SHA-256 vor dem Entpacken.
 
 Die übrigen Dateien im Release:
 
-- `EOT-PC-Payload-v1.0.0-beta.2.zip` — Komponenten und Patches der PC Edition; für die normale Installation ist kein manueller Download nötig;
+- `EOT-PC-Payload-v1.0.0-beta.3.zip` — Komponenten und Patches der PC Edition; für die normale Installation ist kein manueller Download nötig;
 - `SHA256SUMS.txt` — Prüfsummen für Installer und Payload;
 - `release-manifest.json` — Version, Größen, Hashes und unterstützte Ausgangsversionen;
 - `Source code` — Quellcode des Installers, keine spielbare Kopie.
 
 ## Normale Installation
 
-1. `EOTInstaller-v1.0.0-beta.2.exe` vom [offiziellen Projekt-Release](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/tag/v1.0.0-beta.2) herunterladen.
+1. `EOTInstaller-v1.0.0-beta.3.exe` vom [offiziellen Projekt-Release](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/tag/v1.0.0-beta.3) herunterladen.
 2. Den Installer starten.
 3. Sprache für Installer und Spiel auswählen.
 4. Download und Prüfung der PC-Edition-Komponenten abwarten.
 5. Eine kompatible eigene Xbox-360-Quelle auswählen:
-   - europäische Retail-XDVDFS-ISO;
-   - entpackter Spielordner mit `Default.xex` und `Data`;
+   - USA/Europa-Retail-XDVDFS-ISO;
+   - ein ZIP mit dem Spiel, auch mit einem äußeren Ordner `Spider-Man - Edge of Time (USA Europe)`;
+   - entpackter Spielordner mit `Default.xex` und `Data` oder dessen äußerer übergeordneter Ordner;
    - getesteter alternativer russischer GOD/LIVE/XSF über den Ordner `415608B2/00007000`.
 6. Einen leeren Zielordner auswählen, zum Beispiel `D:\Games\Spider-Man Edge of Time PC Edition`.
 7. INSTALLIEREN drücken und die abschließende Prüfung abwarten.
@@ -40,14 +41,14 @@ Nach erfolgreicher Installation werden ISO, GOD oder der entpackte Konsolenordne
 ## Offline-Installation
 
 1. Beide Dateien herunterladen:
-   - `EOTInstaller-v1.0.0-beta.2.exe`;
-   - `EOT-PC-Payload-v1.0.0-beta.2.zip`.
+   - `EOTInstaller-v1.0.0-beta.3.exe`;
+   - `EOT-PC-Payload-v1.0.0-beta.3.zip`.
 2. Einen eigenen Ordner für den Installer anlegen.
 3. Das ZIP neben der EXE entpacken. Die Struktur muss so aussehen:
 
 ```text
 EOT GitHub Installer\
-├── EOTInstaller-v1.0.0-beta.2.exe
+├── EOTInstaller-v1.0.0-beta.3.exe
 └── payload\
     ├── payload-manifest.json
     ├── port\
@@ -58,9 +59,12 @@ EOT GitHub Installer\
 
 `payload` nicht umbenennen und die enthaltenen Dateien nicht aus ihrer Ordnerstruktur herausziehen.
 
+ISO und ZIP können direkt ausgewählt werden. Bei einem Ordner sucht der Installer bis zu zwei Ebenen tiefer nach dem Spielstamm und öffnet auch ein einzelnes ISO/ZIP im gewählten Ordner automatisch.
+
 ## Unterstützte Ausgangsversionen
 
-- `eu-retail` — europäische Xbox-360-Retail-Version;
+- `usa-europe-retail` — verbreitete USA/Europa-Xbox-360-Retail-Version als ISO/ZIP;
+- `eu-retail` — ältere Originalsprachen-Basis der PC Edition für Kompatibilität;
 - `ru-god-alt` — getestete alternative russische GOD/LIVE/XSF-Version.
 
 Eine Dateiendung oder ein `LIVE`-, `PIRS`- beziehungsweise `CON`-Header reicht nicht aus. Der Installer prüft echte Dateigrößen und SHA-256-Hashes. Unbekannte, gemischte oder veränderte Versionen werden abgelehnt, statt eine kaputte Installation zu erzeugen.
@@ -98,12 +102,12 @@ Nach erfolgreicher Installation benötigt das Spiel diesen Cache nicht. Er kann 
 Der Installer besitzt derzeit kein kommerzielles Codesignatur-Zertifikat. Windows SmartScreen kann deshalb bei einer neuen EXE warnen. Nur vom offiziellen GitHub-Release herunterladen und bei Bedarf prüfen:
 
 ```powershell
-Get-FileHash .\EOTInstaller-v1.0.0-beta.2.exe -Algorithm SHA256
+Get-FileHash .\EOTInstaller-v1.0.0-beta.3.exe -Algorithm SHA256
 ```
 
-Installer: `B5E66317CAD4375CF08487FC145DA6388F455C204155E110A4CCD55E088829A1`
+Installer: `C0462B2C31F841DF0323DE6226EA5CB4E451C85EBF4C29F77974887CF1F8E5FF`
 
-Payload: `5651197BC6D093F7474047D37599E81E4EB6B7184EB03A245D688B80BCC314B8`
+Payload: `13B88F7F6B26D00D97290707008986D7E9A25ED91F2458D50BA631D654EA804D`
 
 ## Bei Problemen
 

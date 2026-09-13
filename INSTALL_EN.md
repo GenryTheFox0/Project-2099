@@ -8,26 +8,27 @@
 
 For a normal online installation, download only:
 
-- `EOTInstaller-v1.0.0-beta.2.exe`
+- `EOTInstaller-v1.0.0-beta.3.exe`
 
-The installer downloads `EOT-PC-Payload-v1.0.0-beta.2.zip`, resumes an interrupted transfer and verifies its size and SHA-256 before extraction.
+The installer downloads `EOT-PC-Payload-v1.0.0-beta.3.zip`, resumes an interrupted transfer and verifies its size and SHA-256 before extraction.
 
 The other release files are:
 
-- `EOT-PC-Payload-v1.0.0-beta.2.zip` — PC Edition components and patches; a manual download is unnecessary for a normal online installation;
+- `EOT-PC-Payload-v1.0.0-beta.3.zip` — PC Edition components and patches; a manual download is unnecessary for a normal online installation;
 - `SHA256SUMS.txt` — checksums for the installer and payload;
 - `release-manifest.json` — version, sizes, hashes and supported source IDs;
 - `Source code` — the installer source, not a playable copy of the game.
 
 ## Normal installation
 
-1. Download `EOTInstaller-v1.0.0-beta.2.exe` from the [official project release](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/tag/v1.0.0-beta.2).
+1. Download `EOTInstaller-v1.0.0-beta.3.exe` from the [official project release](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/tag/v1.0.0-beta.3).
 2. Run the installer.
 3. Select the installer and game language.
 4. Wait while the PC Edition components are downloaded and verified.
 5. Select your compatible Xbox 360 source:
-   - a European retail XDVDFS ISO;
-   - an extracted folder containing `Default.xex` and `Data`;
+   - a USA/Europe retail XDVDFS ISO;
+   - a ZIP containing the game, even when it has an outer `Spider-Man - Edge of Time (USA Europe)` folder;
+   - an extracted folder containing `Default.xex` and `Data`, or its outer parent folder;
    - the tested alternate Russian GOD/LIVE/XSF through its `415608B2/00007000` folder.
 6. Select an empty installation directory, for example `D:\Games\Spider-Man Edge of Time PC Edition`.
 7. Press INSTALL and wait for the final verification.
@@ -40,14 +41,14 @@ After installation succeeds, the source ISO, GOD or extracted console folder is 
 ## Offline or pre-downloaded payload
 
 1. Download both:
-   - `EOTInstaller-v1.0.0-beta.2.exe`;
-   - `EOT-PC-Payload-v1.0.0-beta.2.zip`.
+   - `EOTInstaller-v1.0.0-beta.3.exe`;
+   - `EOT-PC-Payload-v1.0.0-beta.3.zip`.
 2. Create a separate folder for the installer.
 3. Extract the ZIP beside the EXE so the layout is:
 
 ```text
 EOT GitHub Installer\
-├── EOTInstaller-v1.0.0-beta.2.exe
+├── EOTInstaller-v1.0.0-beta.3.exe
 └── payload\
     ├── payload-manifest.json
     ├── port\
@@ -58,9 +59,12 @@ EOT GitHub Installer\
 
 Do not rename `payload` or move its internal files out of their directories.
 
+The source button accepts ISO and ZIP directly. When a folder is selected, the installer searches up to two levels below it and also opens a single ISO or ZIP found inside it.
+
 ## Supported source revisions
 
-- `eu-retail` — European Xbox 360 retail release;
+- `usa-europe-retail` — common USA/Europe Xbox 360 retail ISO/ZIP release;
+- `eu-retail` — older PC Edition original-language baseline retained for compatibility;
 - `ru-god-alt` — tested alternate Russian GOD/LIVE/XSF release.
 
 A file extension or a `LIVE`, `PIRS` or `CON` header is not enough. The installer checks actual file sizes and SHA-256 hashes. Unknown, mixed or modified revisions are rejected instead of producing a broken installation.
@@ -98,19 +102,19 @@ The game does not need the installer cache after a successful installation. Keep
 The installer is not currently signed with a commercial certificate, so Windows SmartScreen may warn about a newly downloaded EXE. Download it only from this GitHub release and verify its SHA-256 before running it:
 
 ```powershell
-Get-FileHash .\EOTInstaller-v1.0.0-beta.2.exe -Algorithm SHA256
+Get-FileHash .\EOTInstaller-v1.0.0-beta.3.exe -Algorithm SHA256
 ```
 
 Installer:
 
 ```text
-B5E66317CAD4375CF08487FC145DA6388F455C204155E110A4CCD55E088829A1
+C0462B2C31F841DF0323DE6226EA5CB4E451C85EBF4C29F77974887CF1F8E5FF
 ```
 
 Payload:
 
 ```text
-5651197BC6D093F7474047D37599E81E4EB6B7184EB03A245D688B80BCC314B8
+13B88F7F6B26D00D97290707008986D7E9A25ED91F2458D50BA631D654EA804D
 ```
 
 ## If something fails

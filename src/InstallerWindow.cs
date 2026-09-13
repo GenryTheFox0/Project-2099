@@ -65,8 +65,8 @@ namespace EotInstaller {
           { "Payload is verified and ready.", "Das Payload ist geprüft und bereit." },
           { "DOWNLOAD / VERIFY", "HERUNTERLADEN / PRÜFEN" },
           { "GAME SOURCE", "SPIELQUELLE" },
-          { "Select a Spider-Man: Edge of Time Xbox 360 ISO or an extracted disc root.", "Wähle ein Xbox-360-ISO von Spider-Man: Edge of Time, einen GOD-Container oder ein entpacktes Disc-Stammverzeichnis." },
-          { "SELECT ISO", "ISO WÄHLEN" }, { "SELECT FOLDER", "ORDNER WÄHLEN" },
+          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Wähle ein USA/Europa-ISO, ZIP, einen GOD-Container oder einen äußeren Spielordner. Der Installer findet den Spielstamm automatisch." },
+          { "SELECT ISO / ZIP", "ISO / ZIP WÄHLEN" }, { "SELECT FOLDER", "ORDNER WÄHLEN" },
           { "No source selected.", "Keine Quelle ausgewählt." },
           { "Verified: {0}\nType: {1}\nRevision: {2}", "Geprüft: {0}\nTyp: {1}\nRevision: {2}" },
           { "PC EDITION FOLDER", "PC-EDITION-ORDNER" },
@@ -82,7 +82,7 @@ namespace EotInstaller {
           { "START LAUNCHER", "LAUNCHER STARTEN" }, { "INSTALLATION STOPPED", "INSTALLATION ANGEHALTEN" },
           { "BACK TO SOURCE", "ZURÜCK ZUR QUELLE" }, { "Unknown error.", "Unbekannter Fehler." },
           { "The final folder was not changed. Temporary files were removed.", "Der Zielordner wurde nicht verändert. Temporäre Dateien wurden entfernt." },
-          { "Select Xbox 360 ISO", "Xbox-360-ISO auswählen" }, { "Select the folder containing Default.xex or GOD/00007000", "Ordner mit Default.xex oder GOD-Container auswählen" },
+          { "Select Xbox 360 ISO or ZIP", "Xbox-360-ISO oder ZIP auswählen" }, { "Select the game folder, its outer folder or GOD/00007000", "Spielordner, äußeren Ordner oder GOD/00007000 auswählen" },
           { "Select an empty installation folder", "Leeren Installationsordner auswählen" }, { "Checking revision…", "Revision wird geprüft…" },
           { "Source rejected:\n", "Quelle abgelehnt:\n" }, { "Installation was cancelled.", "Installation wurde abgebrochen." },
           { "Payload verified and ready.\n", "Payload geprüft und bereit.\n" }, { "Could not obtain payload:\n", "Payload konnte nicht geladen werden:\n" }
@@ -95,8 +95,8 @@ namespace EotInstaller {
           { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "L’installateur télécharge uniquement le runtime, le Launcher, les correctifs, les polices et les deltas de traduction depuis GitHub. Les ressources du jeu proviennent de votre ISO/GOD." },
           { "Payload has not been verified yet.", "Le payload n’a pas encore été vérifié." }, { "Payload is verified and ready.", "Le payload est vérifié et prêt." },
           { "DOWNLOAD / VERIFY", "TÉLÉCHARGER / VÉRIFIER" }, { "GAME SOURCE", "SOURCE DU JEU" },
-          { "Select a Spider-Man: Edge of Time Xbox 360 ISO or an extracted disc root.", "Sélectionnez une image Xbox 360 de Spider-Man: Edge of Time, un conteneur GOD ou la racine extraite du disque." },
-          { "SELECT ISO", "CHOISIR L’ISO" }, { "SELECT FOLDER", "CHOISIR LE DOSSIER" }, { "No source selected.", "Aucune source sélectionnée." },
+          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Sélectionnez une ISO USA/Europe, un ZIP, un conteneur GOD ou un dossier extérieur. L’installateur trouve automatiquement la racine du jeu." },
+          { "SELECT ISO / ZIP", "CHOISIR ISO / ZIP" }, { "SELECT FOLDER", "CHOISIR LE DOSSIER" }, { "No source selected.", "Aucune source sélectionnée." },
           { "Verified: {0}\nType: {1}\nRevision: {2}", "Vérifié : {0}\nType : {1}\nRévision : {2}" }, { "PC EDITION FOLDER", "DOSSIER PC EDITION" },
           { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Choisissez un dossier vide. L’installateur n’y sera pas copié ; le résultat contiendra Launcher.exe et SpiderManEOT.exe." },
           { "CHANGE FOLDER", "CHANGER DE DOSSIER" }, { "READY TO BUILD", "PRÊT À CONSTRUIRE" },
@@ -109,7 +109,7 @@ namespace EotInstaller {
           { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "L’installation et la vérification sont terminées. Lancez Launcher.exe ; tous les correctifs PC sont déjà inclus." },
           { "START LAUNCHER", "LANCER LE LAUNCHER" }, { "INSTALLATION STOPPED", "INSTALLATION ARRÊTÉE" }, { "BACK TO SOURCE", "RETOUR À LA SOURCE" },
           { "Unknown error.", "Erreur inconnue." }, { "The final folder was not changed. Temporary files were removed.", "Le dossier final n’a pas été modifié. Les fichiers temporaires ont été supprimés." },
-          { "Select Xbox 360 ISO", "Sélectionner une image Xbox 360" }, { "Select the folder containing Default.xex or GOD/00007000", "Sélectionner le dossier avec Default.xex ou le conteneur GOD" },
+          { "Select Xbox 360 ISO or ZIP", "Sélectionner une ISO Xbox 360 ou un ZIP" }, { "Select the game folder, its outer folder or GOD/00007000", "Sélectionner le dossier du jeu, son dossier extérieur ou GOD/00007000" },
           { "Select an empty installation folder", "Sélectionner un dossier d’installation vide" }, { "Checking revision…", "Vérification de la révision…" },
           { "Source rejected:\n", "Source refusée :\n" }, { "Installation was cancelled.", "L’installation a été annulée." },
           { "Payload verified and ready.\n", "Payload vérifié et prêt.\n" }, { "Could not obtain payload:\n", "Impossible d’obtenir le payload :\n" }
@@ -122,8 +122,8 @@ namespace EotInstaller {
           { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "L’installer scarica da GitHub solo runtime, Launcher, correzioni, font e delta di traduzione. Le risorse del gioco provengono dalla tua ISO/GOD." },
           { "Payload has not been verified yet.", "Il payload non è ancora stato verificato." }, { "Payload is verified and ready.", "Il payload è verificato e pronto." },
           { "DOWNLOAD / VERIFY", "SCARICA / VERIFICA" }, { "GAME SOURCE", "SORGENTE DEL GIOCO" },
-          { "Select a Spider-Man: Edge of Time Xbox 360 ISO or an extracted disc root.", "Seleziona una ISO Xbox 360 di Spider-Man: Edge of Time, un contenitore GOD o la radice del disco estratta." },
-          { "SELECT ISO", "SELEZIONA ISO" }, { "SELECT FOLDER", "SELEZIONA CARTELLA" }, { "No source selected.", "Nessuna sorgente selezionata." },
+          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Seleziona una ISO USA/Europa, un ZIP, un contenitore GOD o una cartella esterna. L’installer trova automaticamente la radice del gioco." },
+          { "SELECT ISO / ZIP", "SELEZIONA ISO / ZIP" }, { "SELECT FOLDER", "SELEZIONA CARTELLA" }, { "No source selected.", "Nessuna sorgente selezionata." },
           { "Verified: {0}\nType: {1}\nRevision: {2}", "Verificato: {0}\nTipo: {1}\nRevisione: {2}" }, { "PC EDITION FOLDER", "CARTELLA PC EDITION" },
           { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Scegli una cartella vuota. L’installer non viene copiato; il risultato contiene Launcher.exe e SpiderManEOT.exe." },
           { "CHANGE FOLDER", "CAMBIA CARTELLA" }, { "READY TO BUILD", "PRONTO ALLA CREAZIONE" },
@@ -136,7 +136,7 @@ namespace EotInstaller {
           { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "Installazione e verifica completate. Avvia Launcher.exe; tutte le correzioni PC sono già incluse." },
           { "START LAUNCHER", "AVVIA LAUNCHER" }, { "INSTALLATION STOPPED", "INSTALLAZIONE INTERROTTA" }, { "BACK TO SOURCE", "TORNA ALLA SORGENTE" },
           { "Unknown error.", "Errore sconosciuto." }, { "The final folder was not changed. Temporary files were removed.", "La cartella finale non è stata modificata. I file temporanei sono stati rimossi." },
-          { "Select Xbox 360 ISO", "Seleziona ISO Xbox 360" }, { "Select the folder containing Default.xex or GOD/00007000", "Seleziona la cartella con Default.xex o il contenitore GOD" },
+          { "Select Xbox 360 ISO or ZIP", "Seleziona ISO Xbox 360 o ZIP" }, { "Select the game folder, its outer folder or GOD/00007000", "Seleziona la cartella del gioco, quella esterna o GOD/00007000" },
           { "Select an empty installation folder", "Seleziona una cartella d’installazione vuota" }, { "Checking revision…", "Verifica della revisione…" },
           { "Source rejected:\n", "Sorgente rifiutata:\n" }, { "Installation was cancelled.", "L’installazione è stata annullata." },
           { "Payload verified and ready.\n", "Payload verificato e pronto.\n" }, { "Could not obtain payload:\n", "Impossibile ottenere il payload:\n" }
@@ -149,8 +149,8 @@ namespace EotInstaller {
           { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "El instalador descarga de GitHub solo el runtime, Launcher, correcciones, fuentes y deltas de traducción. Los recursos del juego proceden de tu ISO/GOD." },
           { "Payload has not been verified yet.", "El payload aún no se ha verificado." }, { "Payload is verified and ready.", "El payload está verificado y listo." },
           { "DOWNLOAD / VERIFY", "DESCARGAR / VERIFICAR" }, { "GAME SOURCE", "ORIGEN DEL JUEGO" },
-          { "Select a Spider-Man: Edge of Time Xbox 360 ISO or an extracted disc root.", "Selecciona una ISO de Spider-Man: Edge of Time para Xbox 360, un contenedor GOD o la raíz extraída del disco." },
-          { "SELECT ISO", "SELECCIONAR ISO" }, { "SELECT FOLDER", "SELECCIONAR CARPETA" }, { "No source selected.", "No se ha seleccionado ningún origen." },
+          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Selecciona una ISO USA/Europa, un ZIP, un contenedor GOD o una carpeta exterior. El instalador encuentra automáticamente la raíz del juego." },
+          { "SELECT ISO / ZIP", "SELECCIONAR ISO / ZIP" }, { "SELECT FOLDER", "SELECCIONAR CARPETA" }, { "No source selected.", "No se ha seleccionado ningún origen." },
           { "Verified: {0}\nType: {1}\nRevision: {2}", "Verificado: {0}\nTipo: {1}\nRevisión: {2}" }, { "PC EDITION FOLDER", "CARPETA DE PC EDITION" },
           { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Elige una carpeta vacía. El instalador no se copia; el resultado contiene Launcher.exe y SpiderManEOT.exe." },
           { "CHANGE FOLDER", "CAMBIAR CARPETA" }, { "READY TO BUILD", "LISTO PARA CREAR" },
@@ -163,7 +163,7 @@ namespace EotInstaller {
           { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "La instalación y la verificación han terminado. Inicia Launcher.exe; todas las correcciones de PC ya están incluidas." },
           { "START LAUNCHER", "INICIAR LAUNCHER" }, { "INSTALLATION STOPPED", "INSTALACIÓN DETENIDA" }, { "BACK TO SOURCE", "VOLVER AL ORIGEN" },
           { "Unknown error.", "Error desconocido." }, { "The final folder was not changed. Temporary files were removed.", "La carpeta final no se modificó. Se eliminaron los archivos temporales." },
-          { "Select Xbox 360 ISO", "Seleccionar ISO de Xbox 360" }, { "Select the folder containing Default.xex or GOD/00007000", "Seleccionar la carpeta con Default.xex o el contenedor GOD" },
+          { "Select Xbox 360 ISO or ZIP", "Seleccionar ISO de Xbox 360 o ZIP" }, { "Select the game folder, its outer folder or GOD/00007000", "Seleccionar la carpeta del juego, la carpeta exterior o GOD/00007000" },
           { "Select an empty installation folder", "Seleccionar una carpeta de instalación vacía" }, { "Checking revision…", "Comprobando la revisión…" },
           { "Source rejected:\n", "Origen rechazado:\n" }, { "Installation was cancelled.", "La instalación fue cancelada." },
           { "Payload verified and ready.\n", "Payload verificado y listo.\n" }, { "Could not obtain payload:\n", "No se pudo obtener el payload:\n" }
@@ -549,10 +549,10 @@ namespace EotInstaller {
 
     void ShowSource() {
       pageTitle.Text = L("ИСТОЧНИК ИГРЫ", "GAME SOURCE");
-      pageContent.Children.Add(Body(L("Укажите ISO Spider-Man: Edge of Time для Xbox 360 либо уже распакованный корень диска.",
-        "Select a Spider-Man: Edge of Time Xbox 360 ISO or an extracted disc root."), 17));
+      pageContent.Children.Add(Body(L("Укажите USA/Europe ISO, ZIP, GOD либо внешнюю папку игры. Инсталлер сам найдёт корень с Default.xex.",
+        "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically."), 17));
       var row = new StackPanel { Orientation = Orientation.Horizontal };
-      var iso = AccentButton(L("ВЫБРАТЬ ISO", "SELECT ISO"), true);
+      var iso = AccentButton(L("ВЫБРАТЬ ISO / ZIP", "SELECT ISO / ZIP"), true);
       var folder = AccentButton(L("ВЫБРАТЬ ПАПКУ", "SELECT FOLDER"), false);
       iso.Click += async delegate { await PickIso(); }; folder.Click += async delegate { await PickFolder(); };
       row.Children.Add(iso); row.Children.Add(folder); pageContent.Children.Add(row);
@@ -617,13 +617,13 @@ namespace EotInstaller {
     }
 
     async Task PickIso() {
-      var dialog = new Microsoft.Win32.OpenFileDialog { Title = L("Выберите Xbox 360 ISO", "Select Xbox 360 ISO"),
-        Filter = "Xbox 360 ISO (*.iso)|*.iso|All files (*.*)|*.*", CheckFileExists = true, Multiselect = false };
+      var dialog = new Microsoft.Win32.OpenFileDialog { Title = L("Выберите Xbox 360 ISO или ZIP", "Select Xbox 360 ISO or ZIP"),
+        Filter = "Xbox 360 source (*.iso;*.zip)|*.iso;*.zip|Xbox 360 ISO (*.iso)|*.iso|ZIP archive (*.zip)|*.zip|All files (*.*)|*.*", CheckFileExists = true, Multiselect = false };
       if (dialog.ShowDialog(this) == true) await Probe(dialog.FileName);
     }
 
     async Task PickFolder() {
-      using (var dialog = new Forms.FolderBrowserDialog { Description = L("Выберите папку с Default.xex либо GOD/00007000", "Select the folder containing Default.xex or GOD/00007000"),
+      using (var dialog = new Forms.FolderBrowserDialog { Description = L("Выберите папку игры, её внешнюю папку либо GOD/00007000", "Select the game folder, its outer folder or GOD/00007000"),
         ShowNewFolderButton = false }) if (dialog.ShowDialog() == Forms.DialogResult.OK) await Probe(dialog.SelectedPath);
     }
 
