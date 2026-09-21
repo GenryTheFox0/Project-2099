@@ -237,6 +237,11 @@ namespace EotInstaller {
     static long SafeLength(string file) { try { return new FileInfo(file).Length; } catch { return -1; } }
 
     static string AppDataRoot() {
+#if EOT_INSTALLER_TEST
+      string testRoot = Environment.GetEnvironmentVariable("EOT_INSTALLER_TEST_APPDATA");
+      if (!String.IsNullOrWhiteSpace(testRoot))
+        return Path.GetFullPath(testRoot);
+#endif
       return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GenryTheFox", "EOTInstaller");
     }
     static string DownloadsCache() { return Path.Combine(AppDataRoot(), "downloads"); }
