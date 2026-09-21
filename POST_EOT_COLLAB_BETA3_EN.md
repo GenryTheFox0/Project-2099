@@ -77,7 +77,7 @@ The remaining V1 issues are still real:
 Those are targets for continued development. At the same time, I am beginning to study the `reeot` material while sharing my PC controls, QTE, localization, font, launcher and other user-facing work with their team.
 
 My project:
-https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition
+https://github.com/GenryTheFox0/Project-2099
 
 EdgeOfTime-Recompiled / reeot:
 https://github.com/goliathret/reeot

@@ -21,7 +21,7 @@ Los demás archivos de la publicación son:
 
 ## Instalación normal
 
-1. Descarga `EOTInstaller-v1.0.0-beta.3.exe` desde la [publicación oficial del proyecto](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/tag/v1.0.0-beta.3).
+1. Descarga `EOTInstaller-v1.0.0-beta.3.exe` desde la [publicación oficial del proyecto](https://github.com/GenryTheFox0/Project-2099/releases/tag/v1.0.0-beta.3).
 2. Ejecuta el instalador.
 3. Selecciona el idioma del instalador y del juego.
 4. Espera mientras se descargan y verifican los componentes de PC Edition.

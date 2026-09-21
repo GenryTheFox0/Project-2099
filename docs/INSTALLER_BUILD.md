@@ -77,6 +77,6 @@ SHA-256-манифест исходного диска и формирует в�
 ## GitHub Release
 
 Публичный installer скачивает один version-pinned ZIP из Releases проекта
-`GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition`, поддерживает докачку HTTP
+`GenryTheFox0/Project-2099`, поддерживает докачку HTTP
 Range, проверяет полный SHA-256 и использует проверенный локальный кэш при
 повторном запуске. Пошаговая публикация описана в `PUBLISH_RU.md`.

@@ -6,7 +6,7 @@
 <p align="center"><strong>Two eras. One impossible PC release.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases">Public downloads</a> ·
+  <a href="https://github.com/GenryTheFox0/Project-2099/releases">Public downloads</a> ·
   <a href="#installation">Installation</a> ·
   <a href="INSTALLATION.md">Six-language guides</a> ·
   <a href="PROJECT_2099_V2_BETA1_TEST.md">V2 test build</a> ·
@@ -44,7 +44,7 @@ V2 attacks the two complaints that mattered most inside the runtime itself, not 
 
 Measured on the development machine (RTX 5060, 12 threads) after these changes: a 120 FPS target held with a median frame of 8.3 ms and p99 near 10 ms, zero in-frame pipeline builds across a session, and no 100 ms save hitch. Different hardware can still expose different problems.
 
-Download the build only from [GitHub Releases](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases). If the release page has no attached files, there is no public build yet.
+Download the build only from [GitHub Releases](https://github.com/GenryTheFox0/Project-2099/releases). If the release page has no attached files, there is no public build yet.
 
 ### Known issues
 

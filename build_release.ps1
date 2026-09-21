@@ -22,7 +22,7 @@ if(-not(Test-Path -LiteralPath $asset)){
 if($LASTEXITCODE){throw 'Payload ZIP verification failed'}
 $payloadItem=Get-Item -LiteralPath $asset
 $payloadHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $asset).Hash
-$payloadUrl="https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/download/$Version/$assetName"
+$payloadUrl="https://github.com/GenryTheFox0/Project-2099/releases/download/$Version/$assetName"
 $channelObject=[ordered]@{Schema=1;Version=$Version;PayloadUrl=$payloadUrl;PayloadSize=$payloadItem.Length;PayloadSha256=$payloadHash}
 $channelText=$channelObject|ConvertTo-Json -Compress
 [IO.File]::WriteAllText($channel,$channelText,[Text.UTF8Encoding]::new($false))
@@ -36,7 +36,7 @@ Copy-Item -LiteralPath "$releaseBuild\EOTInstaller.exe" -Destination $installer 
 $installerItem=Get-Item -LiteralPath $installer
 $installerHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash
 $release=[ordered]@{
-  Schema=1;Version=$Version;Repository='https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition';
+  Schema=1;Version=$Version;Repository='https://github.com/GenryTheFox0/Project-2099';
   Installer=[ordered]@{Name=$installerName;Size=$installerItem.Length;Sha256=$installerHash};
   Payload=[ordered]@{Name=$assetName;Size=$payloadItem.Length;Sha256=$payloadHash};
   SupportedSources=@('usa-europe-retail','eu-retail','ru-god-alt');OriginalGameImageIncluded=$false;
