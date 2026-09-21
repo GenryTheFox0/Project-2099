@@ -82,10 +82,7 @@ https://github.com/GenryTheFox0/Project-2099
 EdgeOfTime-Recompiled / reeot:
 https://github.com/goliathret/reeot
 
-Поддержать дальнейшую работу:
-Patreon: https://www.patreon.com/cw/GenryTheFox
-DonationAlerts: https://www.donationalerts.com/r/genrythefoxmax
-DonatePay: https://donatepay.ru/don/1411886
+Добровольная поддержка дальнейшей работы доступна внутри `Launcher.exe`, на главном экране и в разделе «Проект».
 
 Короче: V1 остаётся, beta.3 чинит установку USA/Europe, конфликт превращается в рабочий диалог, а дальше посмотрим на реальные результаты сотрудничества. Если из двух разных подходов получится один сильный порт — значит весь этот внезапный пиздец произошёл не зря.
 
