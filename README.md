@@ -12,8 +12,7 @@
   <a href="PROJECT_2099_V2_BETA1_TEST.md">V2 test build</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
-  <a href="https://discord.gg/vrCTtBgjt">Discord</a> ·
-  <a href="https://boosty.to/genrythefox">Boosty</a>
+  <a href="https://discord.gg/vrCTtBgjt">Discord</a>
 </p>
 
 ## Коротко по-русски
@@ -38,14 +37,7 @@
 
 ### Поддержать разработку
 
-Project 2099 остаётся бесплатным. Если хотите помочь оплачивать хостинг, инструменты и дальнейшую разработку, используйте прямые страницы автора:
-
-- **[Boosty — ранний доступ и чат, 300 ₽](https://boosty.to/genrythefox)**
-- **[DonationAlerts — разовая поддержка](https://www.donationalerts.com/r/genrythefoxmax)**
-- **[DonatePay — разовая поддержка](https://donatepay.ru/don/1411886)**
-- **[Patreon — международная поддержка](https://www.patreon.com/cw/GenryTheFox)**
-
-Все четыре адреса продублированы в лаунчере через жёсткий HTTPS-список. Лаунчер только открывает страницу выбранного сервиса: он не принимает платёжные данные и ничего не разблокирует за донат.
+Project 2099 остаётся бесплатным. Добровольная поддержка проекта доступна прямо в `Launcher.exe`: на главном экране и в разделе «Проект». Платёжные ссылки намеренно не дублируются в описании репозитория. Лаунчер только открывает выбранный сервис, не принимает платёжные данные и ничего не разблокирует за донат.
 
 Новости: **[Telegram](https://t.me/teamgenrythefox)** · обсуждение и баг-репорты: **[Discord](https://discord.gg/vrCTtBgjt)**.
 
@@ -267,14 +259,7 @@ The GPL covers the code I have the right to license. It does not magically turn 
 
 ## Support development
 
-Project 2099 is free. If it gave you a good evening and you want to help fund hosting, development tools and future builds, these links open the author's pages directly:
-
-- **[Boosty — early access and project chat, RUB 300](https://boosty.to/genrythefox)**
-- **[DonationAlerts — one-time support](https://www.donationalerts.com/r/genrythefoxmax)**
-- **[DonatePay — one-time support](https://donatepay.ru/don/1411886)**
-- **[Patreon — international support](https://www.patreon.com/cw/GenryTheFox)**
-
-The launcher only opens these HTTPS pages; it never handles payment details. Nothing in the game is unlocked by a donation, and public updates do not require one.
+Project 2099 is free. Voluntary support options are available directly inside `Launcher.exe`, both on its home screen and on the Project page. Payment links are intentionally not duplicated in the repository description. The launcher only opens the selected service and never handles payment details. A donation unlocks nothing in the game and is not required for public updates.
 
 ## Telegram — Склад Генри
 

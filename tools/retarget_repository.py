@@ -7,10 +7,10 @@ update sources the launcher reads, the publishing instructions -- points at
 nothing. This rewrites them all and reports what changed, so nothing is left
 silently pointing at a dead page.
 
-Only github.com and raw.githubusercontent.com links are touched. Telegram,
-Boosty, DonationAlerts and Patreon carry the same nickname but are separate
-accounts that did not move; rewriting those by a blanket nickname replace
-turned `boosty.to/genrythefox` into a dead link once already.
+Only github.com and raw.githubusercontent.com links are touched. Telegram and
+the payment providers are separate services that do not move with the GitHub
+account; rewriting external-service usernames by a blanket replacement has
+already produced dead links once.
 
 Usage: python retarget_repository.py <old owner/repo> <new owner/repo> [root]
 """
