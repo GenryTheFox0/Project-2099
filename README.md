@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">Project 2099: На грани времени</h1>
-<p align="center"><strong>Two eras. One impossible PC release.</strong></p>
+<p align="center"><strong>Две эпохи. Один полноценный PC-порт.</strong><br>Two eras. One proper PC port.</p>
 
 <p align="center">
   <a href="https://github.com/GenryTheFox0/Project-2099/releases">Public downloads</a> ·
@@ -16,15 +16,44 @@
   <a href="https://boosty.to/genrythefox">Boosty</a>
 </p>
 
-Project 2099 is an independent Windows recompilation project for **Spider-Man: Edge of Time (2011)**. It adapts the Xbox 360 version through ReXGlue and adds a PC layer built for this game: keyboard and mouse controls, a launcher, localization, local achievements, graphics repairs and mod support. The installation starts from a compatible copy that you provide.
+## Коротко по-русски
 
-The public **V1 Beta 3** installer and the current **V2 BETA 1 TEST** development build are different stages. V2 is being tested and is not presented here as a finished public release. Read the [V2 test status](PROJECT_2099_V2_BETA1_TEST.md) for what is verified and what still needs work.
+**Project 2099** — независимый Windows-порт *Spider-Man: Edge of Time (2011)*, собранный из Xbox 360-версии через ReXGlue. Это не ярлык для эмулятора и не архив с сотней BAT-файлов: проект добавляет собственный установщик, лаунчер, клавиатуру и мышь, PC-настройки, шесть языков, локальные достижения, графические исправления и менеджер модов.
+
+Игровые данные в репозитории не лежат. Пользователь указывает совместимую собственную копию Xbox 360-игры — **ISO, ZIP, распакованную папку или поддерживаемый GOD/SVOD** — а установщик проверяет источник и собирает готовую PC Edition.
+
+**V2 BETA 1** уже собрана как проверяемый релизный кандидат. Пока файлы не загружены в публичный Release и не скачаны обратно анонимным пользователем с совпавшими SHA-256, это всё ещё тестовая сборка, а не обещание «у всех всё идеально». Подробности — в [описании V2](PROJECT_2099_V2_BETA1_TEST.md) и [заметках выпуска](RELEASE_NOTES_RU.md).
+
+### Что нового в V2
+
+- **Установщик на одном экране:** ISO/ZIP/папку можно выбрать или бросить мышкой в окно; payload можно скачать, указать вручную либо положить рядом для полностью офлайн-установки. Старая тупиковая ошибка 404 больше не должна блокировать установку.
+- **Нормальные PC-настройки:** разрешения от 720p до 4K-вывода, окно/полный экран, VSync, 30/60/75/120 FPS, монитор, GPU, анизотропия до 16×, детализация текстур вдали, аудиобуфер, язык, мышь, геймпад и переназначение клавиш. Внутреннее масштабирование выше родного пока честно помечено экспериментальным.
+- **Профили настроек:** выбранную графику, управление, звук и язык можно сохранить в отдельный JSON и перенести на другую установку без сейвов и игровых файлов.
+- **Менеджер модов:** принимает ZIP/7Z/RAR, папки и совместимые `.pak`, `.pkz`, `.png`; показывает порядок и конфликты, собирает языковой overlay в `Mods\\_active` и не переписывает оригинальные пакеты игры. Конвертер PS3/Wii работает только с совместимыми текстурными модами — модели, скрипты и чужой код он не притворяется умеющим переносить.
+- **Работа с фризами:** ограниченное ожидание новых D3D12-конвейеров, фоновые PSO-сборщики, ранний прогрев HDR-конвейера и сокращённая задержка отложенных операций сохранения.
+
+<p align="center">
+  <img src="assets/installer-v2-one-screen-ru-20260921.png" width="1100" alt="Project 2099 V2 one-screen installer">
+</p>
+
+### Поддержать разработку
+
+Project 2099 остаётся бесплатным. Если хотите помочь оплачивать хостинг, инструменты и дальнейшую разработку, используйте прямые страницы автора:
+
+- **[Boosty — ранний доступ и чат, 300 ₽](https://boosty.to/genrythefox)**
+- **[DonationAlerts — разовая поддержка](https://www.donationalerts.com/r/genrythefoxmax)**
+- **[DonatePay — разовая поддержка](https://donatepay.ru/don/1411886)**
+- **[Patreon — международная поддержка](https://www.patreon.com/cw/GenryTheFox)**
+
+Все четыре адреса продублированы в лаунчере через жёсткий HTTPS-список. Лаунчер только открывает страницу выбранного сервиса: он не принимает платёжные данные и ничего не разблокирует за донат.
+
+Новости: **[Telegram](https://t.me/teamgenrythefox)** · обсуждение и баг-репорты: **[Discord](https://discord.gg/vrCTtBgjt)**.
 
 ## What this is
 
 Edge of Time ties Peter Parker and Miguel O’Hara together across two eras: what one Spider-Man changes, the other has to survive. This PC Edition brings the Xbox 360 release to Windows through ReXGlue-based recompilation, then builds a proper PC layer around it: an installer, a launcher, keyboard and mouse controls, localization, local achievements and graphics fixes.
 
-The idea is dead simple: **download → install → launch → play.**
+The idea is simple: **provide your copy → install → launch → play.**
 
 You provide a compatible Xbox 360 copy; the installer does the ugly work and builds the PC Edition. No pile of BAT files. No twenty-page setup ritual.
 
@@ -238,14 +267,14 @@ The GPL covers the code I have the right to license. It does not magically turn 
 
 ## Support development
 
-The PC Edition is free. If it gave you a good evening and you want to help me keep fighting freezes, paying for hosting and building more unreasonable ports, the links are below:
+Project 2099 is free. If it gave you a good evening and you want to help fund hosting, development tools and future builds, these links open the author's pages directly:
 
-- **[Patreon — support Edge of Time and future updates](https://www.patreon.com/cw/GenryTheFox)**
-- **[DonationAlerts](https://www.donationalerts.com/r/genrythefoxmax)**
-- **[DonatePay](https://donatepay.ru/don/1411886)**
-- **[Boosty](https://boosty.to/genrythefox)**
+- **[Boosty — early access and project chat, RUB 300](https://boosty.to/genrythefox)**
+- **[DonationAlerts — one-time support](https://www.donationalerts.com/r/genrythefoxmax)**
+- **[DonatePay — one-time support](https://donatepay.ru/don/1411886)**
+- **[Patreon — international support](https://www.patreon.com/cw/GenryTheFox)**
 
-Nothing is locked behind a donation. It is simply a way to support the person still sitting here and beating this old game into a proper Windows release.
+The launcher only opens these HTTPS pages; it never handles payment details. Nothing in the game is unlocked by a donation, and public updates do not require one.
 
 ## Telegram — Склад Генри
 

@@ -4,39 +4,73 @@
 
 # Project 2099 — V2 BETA 1 TEST
 
-Two Spider-Men, two eras, one game that never received a Windows release. Project 2099 brings the Xbox 360 edition of *Spider-Man: Edge of Time* to PC through static recompilation with ReXGlue, then builds the parts a PC version needs around it: controls, a launcher, settings, localization, achievements, graphics work and a mod manager.
+**Две эпохи. Один полноценный PC-порт.**
 
-This is a development test build. The playable D3D12 path is the baseline; Vulkan, high internal resolutions and some visual effects still need game-level validation. Output resolution and true internal 3D resolution are different settings. We will not advertise a 4K render or a performance gain on the strength of a menu switch alone.
+Project 2099 переносит Xbox 360-версию *Spider-Man: Edge of Time* на Windows через статическую рекомпиляцию ReXGlue и добавляет то, чего у консольного релиза не было: клавиатуру и мышь, современный лаунчер, PC-настройки, локализацию, достижения, графические исправления и безопасную систему модов.
 
-The current public installer remains **V1 Beta 3**. A V2 download should be treated as public only when it has its own release page, matching hashes and a tested installer. You supply a compatible Xbox 360 copy of the game; this source repository does not contain a disc image or a complete game-data tree.
+Это не готовая официальная игра и не сборник игровых данных. Для установки нужна совместимая собственная копия Xbox 360-версии. Репозиторий содержит установщик, инструменты и проектный код; полный образ игры сюда не входит.
 
-## What V2 is testing
+## Что изменилось в V2
 
-- A native-feeling PC settings flow and keyboard/mouse controls, with controller support retained.
-- A photo mode with camera movement, HUD control, capture and colour settings.
-- Local achievements, six interface languages and revised Russian text.
-- Console-format texture mods. A converter can adapt compatible PS3 **texture-only** packages to the Xbox layout; it rejects changes to models, scripts and unsupported formats.
-- DLC mounting and alternative suits, verified against the supplied Xbox 360 package, with final gameplay checks still required.
-- D3D12 image restoration and frame pacing on more hardware. Visual and FPS claims will be backed by gameplay captures and measurements.
+### Установка без ебучих плясок
 
-Issues are useful here. Include the build name, GPU, save state, exact scene, screenshot and a short reproduction sequence. Do not erase your save or shader cache merely to make a report look clean.
+- Один экран вместо цепочки из девяти страниц.
+- ISO, ZIP, распакованную папку или поддерживаемый GOD/SVOD можно выбрать кнопкой либо перетащить в окно.
+- Корень с `Default.xex` и `Data` ищется внутри вложенных каталогов автоматически.
+- Payload берётся из указанного файла, папки рядом с EXE, проверенного кэша, ZIP рядом/в загрузках, основной ссылки или зеркала — именно в таком порядке.
+- Полностью офлайн-установка работает, если положить `EOT-PC-Payload-v2.0.0-beta.1.zip` рядом с установщиком.
+- Каждый источник, патч и собранная языковая ветка проверяются по размеру и SHA-256 до переноса в конечную папку.
 
-Community: [Telegram](https://t.me/teamgenrythefox) · [Discord](https://discord.gg/vrCTtBgjt)
+### Настройки, которые действительно относятся к PC
 
-Project 2099 remains free. If you want to help with hosting and development, the launcher keeps the voluntary links for [Boosty](https://boosty.to/genrythefox), [Patreon](https://www.patreon.com/cw/GenryTheFox), [DonationAlerts](https://www.donationalerts.com/r/genrythefoxmax) and [DonatePay](https://donatepay.ru/don/1411886). A donation is not required to run the game or unlock a costume.
+- Разрешения от 1280×720 до 3840×2160, включая 21:9 3440×1440.
+- Полный экран или окно, VSync, выбор монитора и GPU.
+- Лимиты 30/60/75/120 FPS.
+- Анизотропная фильтрация до 16× и отдельная детализация текстур вдали.
+- Настраиваемый аудиобуфер для слабых CPU, Bluetooth и систем с треском звука.
+- Полное переназначение клавиатуры и мыши, чувствительность, XInput/SDL и вибрация.
+- Русский, English, Deutsch, Français, Italiano и Español.
+- Импорт и экспорт профилей настроек без сейвов, токенов и игровых данных.
 
-Project 2099 is an unofficial fan project. Game, character, platform and artwork rights remain with their respective owners. ReXGlue, Xbox 360 community research and the project's own PC code have different authors and licenses; their credits remain in the main [README](README.md) and [third-party notices](THIRD_PARTY_LICENSES.md).
+Выход в 4K поддерживается как разрешение окна/экрана. Внутренний 3D-рендер выше родного всё ещё экспериментален: надпись «4K» в меню сама по себе не является доказательством честного 4K всей сцены.
 
----
+### Менеджер модов
 
-## По-русски
+`ModManager.exe` входит в V2 и открывается прямо из раздела «Моды» лаунчера.
 
-Два Человека-паука, две эпохи и игра, которую так и не выпустили для Windows. Project 2099 переносит Xbox 360-версию *Spider-Man: Edge of Time* на PC через статическую рекомпиляцию и ReXGlue. Сверху — собственные управление, лаунчер, настройки, локализация, достижения, работа над графикой и модами.
+- Принимает ZIP, 7Z, RAR, папки модов и совместимые `.pak`, `.pkz`, `.png`.
+- Показывает описание, автора, версию, язык и список файлов.
+- Позволяет включать, отключать и менять порядок модов.
+- Предупреждает о конфликте, если несколько модов подменяют один файл.
+- Собирает отдельный overlay `Mods\_active`; исходные пакеты игры остаются нетронутыми.
+- Учитывает активную ветку `Data\Russian` или `Data\Original`.
+- Может конвертировать совместимые **текстурные** PS3/Wii-скины в Xbox-раскладку. Модели, скрипты, исполняемый код и несовместимые форматы отклоняются, а не «магически устанавливаются».
 
-**V2 BETA 1 TEST — проверочная сборка, а не готовый публичный релиз.** Рабочая основа — D3D12. Vulkan, внутренние 2K/4K и часть эффектов ещё требуют проверки в самой игре. Разрешение окна 4K не означает, что вся 3D-сцена действительно рисуется в 4K; обещать это без кадра и замера было бы враньём.
+### Производительность
 
-Публичный установщик пока относится к **V1 Beta 3**. Для установки пользователь предоставляет совместимую собственную копию Xbox 360-игры. Репозиторий исходников не содержит ISO и полного набора игровых данных.
+- Новый D3D12-конвейер получает ограниченный бюджет ожидания на кадр; остальная сборка уходит в фон.
+- Число фоновых PSO-сборщиков увеличено для многоядерных CPU.
+- HDR-конвейер масштабирования создаётся при старте, а не во время первого тяжёлого кадра сцены.
+- Фиксированная 100-мс задержка отложенных операций заменена на настраиваемое значение, по умолчанию 8 мс.
+- В лог добавлена периодическая статистика кадра и отложенных рисований.
 
-В V2 проверяются обновлённые PC-настройки, фоторежим, локальные достижения, шесть языков интерфейса, моды текстур, DLC и восстановление D3D12-графики. Конвертер переносит только совместимые **текстурные** PS3-моды в раскладку Xbox: модели, скрипты и PS3-код он не «магически устанавливает». О найденном баге лучше писать со сценой, видеокартой, скрином и шагами воспроизведения.
+Это не обещание одинакового FPS на любом железе. Сцены, которые впервые создают большой набор поверхностей, всё ещё могут проседать; Vulkan пока не является рабочим релизным путём. Основной режим V2 — D3D12.
 
-Новости и общение: [Telegram](https://t.me/teamgenrythefox) · [Discord](https://discord.gg/vrCTtBgjt). Поддержка добровольна: [Boosty](https://boosty.to/genrythefox), [Patreon](https://www.patreon.com/cw/GenryTheFox), [DonationAlerts](https://www.donationalerts.com/r/genrythefoxmax), [DonatePay](https://donatepay.ru/don/1411886). Донат не нужен для запуска игры и ничего в ней не разблокирует.
+## Поддержать Project 2099
+
+Проект остаётся бесплатным. Если хотите помочь с хостингом, инструментами и следующими сборками:
+
+- **[Boosty — ранний доступ и чат, 300 ₽](https://boosty.to/genrythefox)**
+- **[DonationAlerts](https://www.donationalerts.com/r/genrythefoxmax)**
+- **[DonatePay](https://donatepay.ru/don/1411886)**
+- **[Patreon](https://www.patreon.com/cw/GenryTheFox)**
+
+Лаунчер содержит те же прямые HTTPS-адреса и не принимает платёжные данные. Донат ничего не разблокирует внутри игры и не заменяет собственную копию исходного релиза.
+
+Новости и бесплатные релизы: **[Telegram](https://t.me/teamgenrythefox)** · обсуждение и баг-репорты: **[Discord](https://discord.gg/vrCTtBgjt)**.
+
+## English summary
+
+Project 2099 is an independent Windows recompilation of the Xbox 360 version of *Spider-Man: Edge of Time*. V2 adds a one-screen offline-capable installer, keyboard and mouse controls, a modern settings launcher, six interface languages, local achievements, graphics and performance work, and a language-aware mod manager.
+
+The installer accepts a compatible ISO, ZIP, extracted folder or supported GOD/SVOD source supplied by the user. No disc image or complete game-data tree is included in this repository. D3D12 is the supported rendering path; Vulkan and high internal render scales remain experimental.
