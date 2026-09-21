@@ -41,10 +41,15 @@ namespace EotInstaller {
     public List<ManifestFile> Files = new List<ManifestFile>();
   }
 
+  // Release channel: where the PC Edition payload ZIP lives and what it must
+  // hash to. Embedded at build time; a release-channel.json next to the
+  // installer overrides it, so a download can be re-pointed without a rebuild.
   public sealed class ReleaseChannel {
     public int Schema;
     public string Version;
     public string PayloadUrl;
+    // Optional extra download locations tried after PayloadUrl, in order.
+    public List<string> Mirrors = new List<string>();
     public long PayloadSize;
     public string PayloadSha256;
   }

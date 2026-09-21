@@ -308,11 +308,14 @@ namespace EotInstaller {
 
     GameManifest IdentifySource(IGameSource source, Action<InstallProgress> progress,
       CancellationToken cancellation) {
+      bool matchingQuickCheckSizes = false;
+      bool quickCheckHashMismatch = false;
       foreach (GameManifest manifest in gameManifests) {
         var checks = manifest.QuickChecks.Select(path => manifest.Files.FirstOrDefault(file =>
           String.Equals(file.Path, path, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (checks.Any(file => file == null)) throw new InvalidDataException("Quick-check manifest is inconsistent: " + manifest.Id);
         if (checks.Any(file => !source.Exists(file.Path) || source.GetLength(file.Path) != file.Size)) continue;
+        matchingQuickCheckSizes = true;
         long completed = 0, total = checks.Sum(file => file.Size); bool matches = true;
         foreach (ManifestFile file in checks) {
           cancellation.ThrowIfCancellationRequested();
@@ -321,11 +324,17 @@ namespace EotInstaller {
             hash = HashStream(input, file.Size, cancellation, bytes => {
               completed += bytes; Report(progress, "Проверка источника " + manifest.Id, file.Path, completed, total);
             });
-          if (!SameHash(hash, file.Sha256)) { matches = false; break; }
+          if (!SameHash(hash, file.Sha256)) { matches = false; quickCheckHashMismatch = true; break; }
         }
         if (matches) return manifest;
       }
-      throw new InvalidDataException("Ревизия игры не поддерживается: контрольные файлы не совпали ни с одним известным донором");
+      if (!source.Exists("Default.xex") || !source.Exists("Data/Main.pkz"))
+        throw new InvalidDataException("Source container opened, but the Edge of Time game root (Default.xex and Data/Main.pkz) was not found. Check the selected game/partition; this is not an ISO format failure.");
+      if (quickCheckHashMismatch)
+        throw new InvalidDataException("Source container and game layout opened, and quick-check sizes matched, but SHA-256 hashes differ from every supported donor revision. It may be another region, title update, modified copy or damaged data; the cause cannot be identified from this check alone.");
+      if (!matchingQuickCheckSizes)
+        throw new InvalidDataException("Source container and Edge of Time game root opened, but quick-check file names or sizes do not match any supported donor revision. Check edition/region/title update and source completeness; this is not an ISO format failure.");
+      throw new InvalidDataException("Source revision did not match any supported donor manifest.");
     }
 
     public Task InstallAsync(string sourcePath, string destination, string payloadRoot, int selectedLanguage,
@@ -398,6 +407,10 @@ namespace EotInstaller {
             Path.Combine(stage, "Data", "Original"), variantRoot, progress, cancellation, ref completed, total);
           BuildLanguageTree("Russian", sourceManifest, russianPatches, donorRoot,
             Path.Combine(stage, "Data", "Russian"), variantRoot, progress, cancellation, ref completed, total);
+          VerifyLanguageTree("Original", sourceManifest, originalPatches,
+            Path.Combine(stage, "Data", "Original"), cancellation);
+          VerifyLanguageTree("Russian", sourceManifest, russianPatches,
+            Path.Combine(stage, "Data", "Russian"), cancellation);
           Directory.Delete(donorRoot, true);
           ApplyDefaultLanguage(stage, selectedLanguage);
           WriteReceipt(stage, source, sourceManifest, payload, originalPatches, russianPatches, selectedLanguage);
@@ -448,6 +461,26 @@ namespace EotInstaller {
           completed += file.Size;
         }
         Report(progress, language + " data", file.Path, completed, total);
+      }
+    }
+
+    void VerifyLanguageTree(string language, GameManifest sourceManifest, PatchManifest patches,
+      string targetRoot, CancellationToken cancellation) {
+      var patchMap = patches.Files.ToDictionary(value => NormalizeRelative(value.Path), StringComparer.OrdinalIgnoreCase);
+      foreach (ManifestFile source in sourceManifest.Files) {
+        cancellation.ThrowIfCancellationRequested();
+        PatchFile patch;
+        bool modified = patchMap.TryGetValue(source.Path, out patch);
+        long expectedSize = modified ? patch.TargetSize : source.Size;
+        string expectedHash = modified ? patch.TargetSha256 : source.Sha256;
+        string path = SafeJoin(targetRoot, source.Path);
+        if (!File.Exists(path) || new FileInfo(path).Length != expectedSize ||
+            !SameHash(HashFile(path, cancellation), expectedHash))
+          throw new InvalidDataException(language + " data verification failed: " + source.Path);
+      }
+      foreach (string required in new[] { "Default.xex", "Data/Main.pkz", "Data/BaseGameplay.pkz" }) {
+        if (!File.Exists(SafeJoin(targetRoot, required)))
+          throw new InvalidDataException(language + " data is incomplete: " + required);
       }
     }
 

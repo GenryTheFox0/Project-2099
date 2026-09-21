@@ -6,7 +6,8 @@ $assets=Join-Path $root 'assets'
 $euManifest=Join-Path $root 'manifests\source-manifest-eu.json'
 $godManifest=Join-Path $root 'manifests\source-manifest-ru-god.json'
 $usaManifest=Join-Path $root 'manifests\source-manifest-usa-europe.json'
-foreach($required in @("$assets\miguel.png","$assets\peter.png","$assets\eot.ico",$euManifest,$godManifest,$usaManifest)){
+$projectLogo=Join-Path $assets 'brand\project2099_logo_transparent_v2.png'
+foreach($required in @("$assets\miguel.png","$assets\peter.png","$assets\eot.ico",$projectLogo,$euManifest,$godManifest,$usaManifest)){
   if(-not(Test-Path -LiteralPath $required)){throw "Required build input is missing: $required"}
 }
 New-Item -ItemType Directory -Force -Path $build | Out-Null
@@ -16,6 +17,7 @@ $references=@('System.dll','System.Core.dll','System.Web.Extensions.dll','System
 $references+=@('PresentationFramework.dll','PresentationCore.dll','WindowsBase.dll')|ForEach-Object{Join-Path "$fx\WPF" $_}
 $common=@('/nologo','/platform:x64','/optimize+','/utf8output',"/win32icon:$assets\eot.ico","/win32manifest:$root\app.manifest",
   "/resource:$assets\miguel.png,EOT.miguel.png","/resource:$assets\peter.png,EOT.peter.png",
+  "/resource:$projectLogo,EOT.project2099_logo.png",
   "/resource:$euManifest,EOT.source-manifest.eu.json","/resource:$godManifest,EOT.source-manifest.ru-god.json",
   "/resource:$usaManifest,EOT.source-manifest.usa-europe.json")
 foreach($reference in $references){$common+="/reference:$reference"}

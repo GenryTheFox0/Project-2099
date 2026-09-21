@@ -86,8 +86,24 @@ namespace EotInstaller {
       }
       long scanned = ScanForGameOffset(stream);
       if (scanned >= 0) return scanned;
-      throw new InvalidDataException(
-        "MICROSOFT*XBOX*MEDIA was not found in the Xbox 360 disc area. Select the original USA/Europe XDVDFS ISO, not a PS3 ISO, archive or shortcut.");
+      throw new InvalidDataException(DescribeUnrecognizedImage(stream));
+    }
+
+    string DescribeUnrecognizedImage(FileStream stream) {
+      if (imageLength < 32L * SectorSize + 28)
+        return "ISO is too short to contain a 2048-byte-sector XDVDFS volume descriptor. The file may be incomplete or use an unsupported container layout.";
+      var header = new byte[16];
+      stream.Position = 0;
+      int count = stream.Read(header, 0, header.Length);
+      if (count >= 4 && header[0] == 'P' && header[1] == 'K' && header[2] == 3 && header[3] == 4)
+        return "This file is a ZIP archive, not an XDVDFS ISO. Select it as ZIP instead of renaming it to .iso.";
+      if (count >= 12 && header[0] == 0 && header[11] == 0) {
+        bool rawSectorSync = true;
+        for (int i = 1; i < 11; i++) if (header[i] != 0xFF) { rawSectorSync = false; break; }
+        if (rawSectorSync)
+          return "This appears to use raw CD sectors, not the supported 2048-byte-sector XDVDFS ISO layout. The source was not parsed; its game revision and integrity have not been checked.";
+      }
+      return "No valid 2048-byte-sector XDVDFS volume descriptor was found in the supported Xbox 360 disc offsets or the first 512 MiB. The image layout is unsupported or the file is incomplete; this does not establish its region, title update or corruption.";
     }
 
     bool HasValidVolumeDescriptor(FileStream stream, long candidate) {
