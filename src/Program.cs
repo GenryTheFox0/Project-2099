@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -118,7 +118,7 @@ namespace EotInstaller {
         }
         app.Run(window);
       } catch (Exception error) {
-        MessageBox.Show(error.ToString(), "Spider-Man: Edge of Time — Installer",
+        MessageBox.Show(error.ToString(), "Project 2099",
           MessageBoxButton.OK, MessageBoxImage.Error);
         Environment.ExitCode = 1;
       }

@@ -6,3 +6,16 @@
 *.suo
 *.log
 *.tmp
+*.dmp
+*.mdmp
+*.crash
+/.env
+/.env.*
+!/.env.example
+/.codex/
+/credentials*.json
+/secrets*.json
+*.pem
+*.p12
+*.pfx
+*.key

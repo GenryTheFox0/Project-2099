@@ -30,7 +30,7 @@ Gli altri file della release sono:
    - ZIP contenente il gioco, anche con una cartella esterna `Spider-Man - Edge of Time (USA Europe)`;
    - cartella estratta contenente `Default.xex` e `Data`, oppure la sua cartella principale esterna;
    - GOD/LIVE/XSF russo alternativo verificato tramite la cartella `415608B2/00007000`.
-6. Scegli una cartella di destinazione vuota, per esempio `D:\Games\Spider-Man Edge of Time PC Edition`.
+6. Scegli una cartella di destinazione vuota, per esempio `D:\Games\Project 2099`.
 7. Premi INSTALLA e attendi la verifica finale.
 8. Avvia il gioco installato tramite `Launcher.exe`.
 

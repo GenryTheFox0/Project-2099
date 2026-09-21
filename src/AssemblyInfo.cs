@@ -1,10 +1,10 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("Spider-Man: Edge of Time — PC Edition Installer")]
+[assembly: AssemblyTitle("Project 2099: На грани времени — установщик")]
 [assembly: AssemblyDescription("Builds GenryTheFox PC Edition from a user-provided Xbox 360 source")]
 [assembly: AssemblyCompany("GenryTheFox")]
-[assembly: AssemblyProduct("Spider-Man: Edge of Time — PC Edition")]
+[assembly: AssemblyProduct("Project 2099: На грани времени")]
 [assembly: AssemblyCopyright("Copyright © 2026 GenryTheFox contributors")]
 [assembly: ComVisible(false)]
 [assembly: AssemblyVersion("1.0.0.3")]

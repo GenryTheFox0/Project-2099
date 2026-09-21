@@ -13,6 +13,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -20,14 +21,29 @@ using Forms = System.Windows.Forms;
 using IOPath = System.IO.Path;
 
 namespace EotInstaller {
+  // GENRY V2 (2026-09-21, Shram): Project 2099 installer window.
+  //
+  // The V1 wizard walked nine pages in a fixed order: language, welcome,
+  // components, source, destination, ready, installing... and if the payload
+  // download failed on page three, the whole thing dead-ended there with no way
+  // forward. This version keeps the look and the art, and replaces the march
+  // with one setup screen holding three independent cards -- game source,
+  // install folder, PC Edition files -- that can be filled in any order and
+  // each show their own state. INSTALL lights up when all three are green.
+  //
+  // Convenience over the V1 flow: drag and drop an ISO/ZIP/folder anywhere on
+  // the window, the payload resolves by itself in the background while the user
+  // picks a source, an offline ZIP can be pointed at by hand, free disk space is
+  // checked before the install rather than after it fails, and the failure page
+  // states what to do next instead of only what went wrong.
   public sealed class InstallerWindow : Window {
-    enum Page { Language, Welcome, Components, Source, Destination, Ready, Installing, Done, Failed }
+    enum Page { Language, Setup, Installing, Done, Failed }
+    enum CardState { Empty, Busy, Ready, Warn, Failed }
 
     readonly InstallerCore core = new InstallerCore();
     readonly PayloadProvider payloadProvider = new PayloadProvider();
     readonly bool previewMode;
     readonly Grid logicalRoot = new Grid();
-    readonly Grid contentPanel = new Grid();
     readonly StackPanel pageContent = new StackPanel();
     readonly TextBlock pageTitle = new TextBlock();
     readonly TextBlock pageKicker = new TextBlock();
@@ -37,155 +53,50 @@ namespace EotInstaller {
     readonly Button closeButton;
     readonly Image miguelImage;
     readonly Image peterImage;
+    Border dropHint;
+
     ProgressBar progressBar;
     TextBlock progressText;
     TextBlock progressDetails;
     TextBlock sourceStatus;
-    TextBlock componentStatus;
-    ProgressBar componentProgress;
+    TextBlock payloadStatus;
     TextBlock destinationStatus;
+    ProgressBar payloadProgress;
+    Button payloadRetry;
+    Button payloadManual;
+
     Page page = Page.Language;
     int selectedLanguage = 12;
     string sourcePath;
     string payloadPath;
     string destinationPath;
+    string payloadError;
+    string failureHint;
     SourceProbe probe;
+    CardState sourceState = CardState.Empty;
+    CardState payloadState = CardState.Empty;
     CancellationTokenSource cancellation;
+    CancellationTokenSource payloadCancellation;
     Stopwatch installClock;
-
-    static readonly Dictionary<int, Dictionary<string, string>> TextCatalog =
-      new Dictionary<int, Dictionary<string, string>> {
-        { 2, new Dictionary<string, string> {
-          { "TWO ERAS. ONE DESTINY.", "ZWEI ZEITALTER. EIN SCHICKSAL." },
-          { "Welcome to the Spider-Man: Edge of Time — PC Edition installer. It builds the complete port from your Xbox 360 copy and applies the accepted PC fixes.", "Willkommen beim Installer von Spider-Man: Edge of Time — PC Edition. Er erstellt den vollständigen Port aus deiner Xbox-360-Kopie und wendet die geprüften PC-Korrekturen an." },
-          { "No ISO is included or downloaded. Provide a supported XDVDFS ISO, GOD/00007000 or an extracted folder containing Default.xex and Data.", "Es wird kein ISO mitgeliefert oder heruntergeladen. Verwende ein unterstütztes XDVDFS-ISO, einen GOD-Container oder einen entpackten Ordner mit Default.xex und Data." },
-          { "Russian and original languages, mouse controls, B/E and Y/MMB prompts, audio fixes, fonts and Launcher are installed together.", "Russisch und Originalsprachen, Maussteuerung, B/E- und Y/MMB-Hinweise, Audiokorrekturen, Schriften und Launcher werden gemeinsam installiert." },
-          { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "Der Installer lädt nur Runtime, Launcher, Korrekturen, Schriften und Übersetzungs-Deltas von GitHub. Die Spieldaten stammen aus deinem ISO/GOD." },
-          { "Payload has not been verified yet.", "Das Payload wurde noch nicht geprüft." },
-          { "Payload is verified and ready.", "Das Payload ist geprüft und bereit." },
-          { "DOWNLOAD / VERIFY", "HERUNTERLADEN / PRÜFEN" },
-          { "GAME SOURCE", "SPIELQUELLE" },
-          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Wähle ein USA/Europa-ISO, ZIP, einen GOD-Container oder einen äußeren Spielordner. Der Installer findet den Spielstamm automatisch." },
-          { "SELECT ISO / ZIP", "ISO / ZIP WÄHLEN" }, { "SELECT FOLDER", "ORDNER WÄHLEN" },
-          { "No source selected.", "Keine Quelle ausgewählt." },
-          { "Verified: {0}\nType: {1}\nRevision: {2}", "Geprüft: {0}\nTyp: {1}\nRevision: {2}" },
-          { "PC EDITION FOLDER", "PC-EDITION-ORDNER" },
-          { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Wähle einen leeren Ordner. Der Installer selbst wird nicht kopiert; das Ergebnis enthält Launcher.exe und SpiderManEOT.exe." },
-          { "CHANGE FOLDER", "ORDNER ÄNDERN" }, { "READY TO BUILD", "BEREIT ZUR ERSTELLUNG" },
-          { "The source is verified. PC Edition is built in a staging folder and appears at the destination only after full verification.", "Die Quelle ist geprüft. Die PC Edition wird in einem temporären Ordner erstellt und erscheint erst nach vollständiger Prüfung am Ziel." },
-          { "ISO/folder: {0}\nDestination: {1}\nSource files: {2}", "ISO/Ordner: {0}\nZiel: {1}\nQuelldateien: {2}" },
-          { "Press INSTALL. On an SSD, most time is spent reading the ISO and applying Russian deltas.", "Drücke INSTALLIEREN. Auf einer SSD wird die meiste Zeit zum Lesen der Quelle und Anwenden der Sprach-Patches benötigt." },
-          { "BUILDING PC EDITION", "PC EDITION WIRD ERSTELLT" }, { "Preparing…", "Vorbereitung…" },
-          { "Do not close the window while files are written. Cancel removes only the temporary staging folder.", "Schließe das Fenster nicht während des Schreibens. Abbrechen entfernt nur den temporären Ordner." },
-          { "PC EDITION IS READY", "PC EDITION IST BEREIT" },
-          { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "Installation und Prüfung sind abgeschlossen. Starte über Launcher.exe; alle PC-Korrekturen sind bereits enthalten." },
-          { "START LAUNCHER", "LAUNCHER STARTEN" }, { "INSTALLATION STOPPED", "INSTALLATION ANGEHALTEN" },
-          { "BACK TO SOURCE", "ZURÜCK ZUR QUELLE" }, { "Unknown error.", "Unbekannter Fehler." },
-          { "The final folder was not changed. Temporary files were removed.", "Der Zielordner wurde nicht verändert. Temporäre Dateien wurden entfernt." },
-          { "Select Xbox 360 ISO or ZIP", "Xbox-360-ISO oder ZIP auswählen" }, { "Select the game folder, its outer folder or GOD/00007000", "Spielordner, äußeren Ordner oder GOD/00007000 auswählen" },
-          { "Select an empty installation folder", "Leeren Installationsordner auswählen" }, { "Checking revision…", "Revision wird geprüft…" },
-          { "Source rejected:\n", "Quelle abgelehnt:\n" }, { "Installation was cancelled.", "Installation wurde abgebrochen." },
-          { "Payload verified and ready.\n", "Payload geprüft und bereit.\n" }, { "Could not obtain payload:\n", "Payload konnte nicht geladen werden:\n" }
-        } },
-        { 3, new Dictionary<string, string> {
-          { "TWO ERAS. ONE DESTINY.", "DEUX ÉPOQUES. UN DESTIN." },
-          { "Welcome to the Spider-Man: Edge of Time — PC Edition installer. It builds the complete port from your Xbox 360 copy and applies the accepted PC fixes.", "Bienvenue dans l’installateur de Spider-Man: Edge of Time — PC Edition. Il construit le port complet depuis votre copie Xbox 360 et applique les correctifs PC validés." },
-          { "No ISO is included or downloaded. Provide a supported XDVDFS ISO, GOD/00007000 or an extracted folder containing Default.xex and Data.", "Aucune image ISO n’est incluse ou téléchargée. Fournissez une image XDVDFS compatible, un conteneur GOD ou un dossier extrait contenant Default.xex et Data." },
-          { "Russian and original languages, mouse controls, B/E and Y/MMB prompts, audio fixes, fonts and Launcher are installed together.", "Le russe et les langues d’origine, la souris, les indications B/E et Y/MMB, les correctifs audio, les polices et le Launcher sont installés ensemble." },
-          { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "L’installateur télécharge uniquement le runtime, le Launcher, les correctifs, les polices et les deltas de traduction depuis GitHub. Les ressources du jeu proviennent de votre ISO/GOD." },
-          { "Payload has not been verified yet.", "Le payload n’a pas encore été vérifié." }, { "Payload is verified and ready.", "Le payload est vérifié et prêt." },
-          { "DOWNLOAD / VERIFY", "TÉLÉCHARGER / VÉRIFIER" }, { "GAME SOURCE", "SOURCE DU JEU" },
-          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Sélectionnez une ISO USA/Europe, un ZIP, un conteneur GOD ou un dossier extérieur. L’installateur trouve automatiquement la racine du jeu." },
-          { "SELECT ISO / ZIP", "CHOISIR ISO / ZIP" }, { "SELECT FOLDER", "CHOISIR LE DOSSIER" }, { "No source selected.", "Aucune source sélectionnée." },
-          { "Verified: {0}\nType: {1}\nRevision: {2}", "Vérifié : {0}\nType : {1}\nRévision : {2}" }, { "PC EDITION FOLDER", "DOSSIER PC EDITION" },
-          { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Choisissez un dossier vide. L’installateur n’y sera pas copié ; le résultat contiendra Launcher.exe et SpiderManEOT.exe." },
-          { "CHANGE FOLDER", "CHANGER DE DOSSIER" }, { "READY TO BUILD", "PRÊT À CONSTRUIRE" },
-          { "The source is verified. PC Edition is built in a staging folder and appears at the destination only after full verification.", "La source est vérifiée. La PC Edition est construite dans un dossier temporaire et n’apparaît à destination qu’après vérification complète." },
-          { "ISO/folder: {0}\nDestination: {1}\nSource files: {2}", "ISO/dossier : {0}\nDestination : {1}\nFichiers source : {2}" },
-          { "Press INSTALL. On an SSD, most time is spent reading the ISO and applying Russian deltas.", "Appuyez sur INSTALLER. Sur un SSD, l’essentiel du temps sert à lire la source et à appliquer les correctifs linguistiques." },
-          { "BUILDING PC EDITION", "CONSTRUCTION DE LA PC EDITION" }, { "Preparing…", "Préparation…" },
-          { "Do not close the window while files are written. Cancel removes only the temporary staging folder.", "Ne fermez pas la fenêtre pendant l’écriture. Annuler supprime uniquement le dossier temporaire." },
-          { "PC EDITION IS READY", "PC EDITION PRÊTE" },
-          { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "L’installation et la vérification sont terminées. Lancez Launcher.exe ; tous les correctifs PC sont déjà inclus." },
-          { "START LAUNCHER", "LANCER LE LAUNCHER" }, { "INSTALLATION STOPPED", "INSTALLATION ARRÊTÉE" }, { "BACK TO SOURCE", "RETOUR À LA SOURCE" },
-          { "Unknown error.", "Erreur inconnue." }, { "The final folder was not changed. Temporary files were removed.", "Le dossier final n’a pas été modifié. Les fichiers temporaires ont été supprimés." },
-          { "Select Xbox 360 ISO or ZIP", "Sélectionner une ISO Xbox 360 ou un ZIP" }, { "Select the game folder, its outer folder or GOD/00007000", "Sélectionner le dossier du jeu, son dossier extérieur ou GOD/00007000" },
-          { "Select an empty installation folder", "Sélectionner un dossier d’installation vide" }, { "Checking revision…", "Vérification de la révision…" },
-          { "Source rejected:\n", "Source refusée :\n" }, { "Installation was cancelled.", "L’installation a été annulée." },
-          { "Payload verified and ready.\n", "Payload vérifié et prêt.\n" }, { "Could not obtain payload:\n", "Impossible d’obtenir le payload :\n" }
-        } },
-        { 4, new Dictionary<string, string> {
-          { "TWO ERAS. ONE DESTINY.", "DUE EPOCHE. UN SOLO DESTINO." },
-          { "Welcome to the Spider-Man: Edge of Time — PC Edition installer. It builds the complete port from your Xbox 360 copy and applies the accepted PC fixes.", "Benvenuto nell’installer di Spider-Man: Edge of Time — PC Edition. Crea il port completo dalla tua copia Xbox 360 e applica le correzioni PC verificate." },
-          { "No ISO is included or downloaded. Provide a supported XDVDFS ISO, GOD/00007000 or an extracted folder containing Default.xex and Data.", "Nessuna ISO è inclusa o scaricata. Fornisci una ISO XDVDFS supportata, un contenitore GOD o una cartella estratta con Default.xex e Data." },
-          { "Russian and original languages, mouse controls, B/E and Y/MMB prompts, audio fixes, fonts and Launcher are installed together.", "Russo e lingue originali, controlli del mouse, prompt B/E e Y/MMB, correzioni audio, font e Launcher vengono installati insieme." },
-          { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "L’installer scarica da GitHub solo runtime, Launcher, correzioni, font e delta di traduzione. Le risorse del gioco provengono dalla tua ISO/GOD." },
-          { "Payload has not been verified yet.", "Il payload non è ancora stato verificato." }, { "Payload is verified and ready.", "Il payload è verificato e pronto." },
-          { "DOWNLOAD / VERIFY", "SCARICA / VERIFICA" }, { "GAME SOURCE", "SORGENTE DEL GIOCO" },
-          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Seleziona una ISO USA/Europa, un ZIP, un contenitore GOD o una cartella esterna. L’installer trova automaticamente la radice del gioco." },
-          { "SELECT ISO / ZIP", "SELEZIONA ISO / ZIP" }, { "SELECT FOLDER", "SELEZIONA CARTELLA" }, { "No source selected.", "Nessuna sorgente selezionata." },
-          { "Verified: {0}\nType: {1}\nRevision: {2}", "Verificato: {0}\nTipo: {1}\nRevisione: {2}" }, { "PC EDITION FOLDER", "CARTELLA PC EDITION" },
-          { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Scegli una cartella vuota. L’installer non viene copiato; il risultato contiene Launcher.exe e SpiderManEOT.exe." },
-          { "CHANGE FOLDER", "CAMBIA CARTELLA" }, { "READY TO BUILD", "PRONTO ALLA CREAZIONE" },
-          { "The source is verified. PC Edition is built in a staging folder and appears at the destination only after full verification.", "La sorgente è verificata. La PC Edition viene creata in una cartella temporanea e appare nella destinazione solo dopo la verifica completa." },
-          { "ISO/folder: {0}\nDestination: {1}\nSource files: {2}", "ISO/cartella: {0}\nDestinazione: {1}\nFile sorgente: {2}" },
-          { "Press INSTALL. On an SSD, most time is spent reading the ISO and applying Russian deltas.", "Premi INSTALLA. Su un SSD, la maggior parte del tempo serve a leggere la sorgente e applicare le patch linguistiche." },
-          { "BUILDING PC EDITION", "CREAZIONE PC EDITION" }, { "Preparing…", "Preparazione…" },
-          { "Do not close the window while files are written. Cancel removes only the temporary staging folder.", "Non chiudere la finestra durante la scrittura. Annulla rimuove soltanto la cartella temporanea." },
-          { "PC EDITION IS READY", "PC EDITION PRONTA" },
-          { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "Installazione e verifica completate. Avvia Launcher.exe; tutte le correzioni PC sono già incluse." },
-          { "START LAUNCHER", "AVVIA LAUNCHER" }, { "INSTALLATION STOPPED", "INSTALLAZIONE INTERROTTA" }, { "BACK TO SOURCE", "TORNA ALLA SORGENTE" },
-          { "Unknown error.", "Errore sconosciuto." }, { "The final folder was not changed. Temporary files were removed.", "La cartella finale non è stata modificata. I file temporanei sono stati rimossi." },
-          { "Select Xbox 360 ISO or ZIP", "Seleziona ISO Xbox 360 o ZIP" }, { "Select the game folder, its outer folder or GOD/00007000", "Seleziona la cartella del gioco, quella esterna o GOD/00007000" },
-          { "Select an empty installation folder", "Seleziona una cartella d’installazione vuota" }, { "Checking revision…", "Verifica della revisione…" },
-          { "Source rejected:\n", "Sorgente rifiutata:\n" }, { "Installation was cancelled.", "L’installazione è stata annullata." },
-          { "Payload verified and ready.\n", "Payload verificato e pronto.\n" }, { "Could not obtain payload:\n", "Impossibile ottenere il payload:\n" }
-        } },
-        { 5, new Dictionary<string, string> {
-          { "TWO ERAS. ONE DESTINY.", "DOS ÉPOCAS. UN DESTINO." },
-          { "Welcome to the Spider-Man: Edge of Time — PC Edition installer. It builds the complete port from your Xbox 360 copy and applies the accepted PC fixes.", "Bienvenido al instalador de Spider-Man: Edge of Time — PC Edition. Crea el port completo desde tu copia de Xbox 360 y aplica las correcciones de PC verificadas." },
-          { "No ISO is included or downloaded. Provide a supported XDVDFS ISO, GOD/00007000 or an extracted folder containing Default.xex and Data.", "No se incluye ni se descarga ninguna ISO. Usa una ISO XDVDFS compatible, un contenedor GOD o una carpeta extraída con Default.xex y Data." },
-          { "Russian and original languages, mouse controls, B/E and Y/MMB prompts, audio fixes, fonts and Launcher are installed together.", "El ruso y los idiomas originales, el ratón, las indicaciones B/E y Y/MMB, las correcciones de audio, las fuentes y el Launcher se instalan juntos." },
-          { "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD.", "El instalador descarga de GitHub solo el runtime, Launcher, correcciones, fuentes y deltas de traducción. Los recursos del juego proceden de tu ISO/GOD." },
-          { "Payload has not been verified yet.", "El payload aún no se ha verificado." }, { "Payload is verified and ready.", "El payload está verificado y listo." },
-          { "DOWNLOAD / VERIFY", "DESCARGAR / VERIFICAR" }, { "GAME SOURCE", "ORIGEN DEL JUEGO" },
-          { "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically.", "Selecciona una ISO USA/Europa, un ZIP, un contenedor GOD o una carpeta exterior. El instalador encuentra automáticamente la raíz del juego." },
-          { "SELECT ISO / ZIP", "SELECCIONAR ISO / ZIP" }, { "SELECT FOLDER", "SELECCIONAR CARPETA" }, { "No source selected.", "No se ha seleccionado ningún origen." },
-          { "Verified: {0}\nType: {1}\nRevision: {2}", "Verificado: {0}\nTipo: {1}\nRevisión: {2}" }, { "PC EDITION FOLDER", "CARPETA DE PC EDITION" },
-          { "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe.", "Elige una carpeta vacía. El instalador no se copia; el resultado contiene Launcher.exe y SpiderManEOT.exe." },
-          { "CHANGE FOLDER", "CAMBIAR CARPETA" }, { "READY TO BUILD", "LISTO PARA CREAR" },
-          { "The source is verified. PC Edition is built in a staging folder and appears at the destination only after full verification.", "El origen está verificado. PC Edition se crea en una carpeta temporal y solo aparece en el destino tras la verificación completa." },
-          { "ISO/folder: {0}\nDestination: {1}\nSource files: {2}", "ISO/carpeta: {0}\nDestino: {1}\nArchivos de origen: {2}" },
-          { "Press INSTALL. On an SSD, most time is spent reading the ISO and applying Russian deltas.", "Pulsa INSTALAR. En un SSD, la mayor parte del tiempo se dedica a leer el origen y aplicar los parches de idioma." },
-          { "BUILDING PC EDITION", "CREANDO PC EDITION" }, { "Preparing…", "Preparando…" },
-          { "Do not close the window while files are written. Cancel removes only the temporary staging folder.", "No cierres la ventana mientras se escriben archivos. Cancelar solo elimina la carpeta temporal." },
-          { "PC EDITION IS READY", "PC EDITION ESTÁ LISTA" },
-          { "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included.", "La instalación y la verificación han terminado. Inicia Launcher.exe; todas las correcciones de PC ya están incluidas." },
-          { "START LAUNCHER", "INICIAR LAUNCHER" }, { "INSTALLATION STOPPED", "INSTALACIÓN DETENIDA" }, { "BACK TO SOURCE", "VOLVER AL ORIGEN" },
-          { "Unknown error.", "Error desconocido." }, { "The final folder was not changed. Temporary files were removed.", "La carpeta final no se modificó. Se eliminaron los archivos temporales." },
-          { "Select Xbox 360 ISO or ZIP", "Seleccionar ISO de Xbox 360 o ZIP" }, { "Select the game folder, its outer folder or GOD/00007000", "Seleccionar la carpeta del juego, la carpeta exterior o GOD/00007000" },
-          { "Select an empty installation folder", "Seleccionar una carpeta de instalación vacía" }, { "Checking revision…", "Comprobando la revisión…" },
-          { "Source rejected:\n", "Origen rechazado:\n" }, { "Installation was cancelled.", "La instalación fue cancelada." },
-          { "Payload verified and ready.\n", "Payload verificado y listo.\n" }, { "Could not obtain payload:\n", "No se pudo obtener el payload:\n" }
-        } }
-      };
+    bool payloadRunning;
 
     public InstallerWindow(bool preview) {
       previewMode = preview;
-      Title = "Spider-Man: Edge of Time — PC Edition Installer";
+      Title = "Project 2099: На грани времени";
       Width = 1280; Height = 720; MinWidth = 960; MinHeight = 540;
       WindowStartupLocation = WindowStartupLocation.CenterScreen;
       WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResizeWithGrip;
       Background = Brushes.Black;
       SnapsToDevicePixels = true;
+      AllowDrop = true;
 
       var viewbox = new Viewbox { Stretch = Stretch.Uniform };
       logicalRoot.Width = 1280; logicalRoot.Height = 720;
       viewbox.Child = logicalRoot; Content = viewbox;
       BuildBackdrop();
 
-      peterImage = Character("EOT.peter.png", 276, 104, 540, 540, 0.68);
-      miguelImage = Character("EOT.miguel.png", -4, 60, 430, 650, 0.97);
+      peterImage = Character("EOT.peter.png", 250, 108, 540, 540, 0.62);
+      miguelImage = Character("EOT.miguel.png", -14, 62, 430, 650, 0.95);
       logicalRoot.Children.Add(peterImage);
       logicalRoot.Children.Add(miguelImage);
 
@@ -195,17 +106,42 @@ namespace EotInstaller {
       nextButton = AccentButton("ДАЛЕЕ", true);
       closeButton = AccentButton("ВЫХОД", false);
       BuildFooter();
+      BuildDropHint();
 
       backButton.Click += delegate { Back(); };
       nextButton.Click += async delegate { await Next(); };
       closeButton.Click += delegate { if (page == Page.Installing) CancelInstall(); else Close(); };
       KeyDown += OnKeyDown;
-      Closed += delegate { if (cancellation != null) cancellation.Cancel(); };
-      destinationPath = IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-        "Spider-Man Edge of Time PC Edition");
+      DragEnter += OnDragOver; DragOver += OnDragOver; DragLeave += delegate { ShowDropHint(false); };
+      Drop += OnDrop;
+      Closed += delegate {
+        if (cancellation != null) cancellation.Cancel();
+        if (payloadCancellation != null) payloadCancellation.Cancel();
+      };
+      destinationPath = DefaultDestination();
       RenderPage();
       Loaded += delegate { Fade(logicalRoot); };
     }
+
+    // The PC Edition needs ~14 GB. Documents often sits on a full system drive,
+    // so the default lands on the fixed drive with the most room and falls back
+    // to Documents only when nothing can be measured.
+    static string DefaultDestination() {
+      try {
+        DriveInfo best = null;
+        foreach (DriveInfo drive in DriveInfo.GetDrives()) {
+          try {
+            if (drive.DriveType != DriveType.Fixed || !drive.IsReady) continue;
+            if (best == null || drive.AvailableFreeSpace > best.AvailableFreeSpace) best = drive;
+          } catch { }
+        }
+        if (best != null && best.AvailableFreeSpace > (20L << 30))
+          return IOPath.Combine(best.RootDirectory.FullName, "Games", "Project 2099");
+      } catch { }
+      return IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Project 2099");
+    }
+
+    // ------------------------------------------------------ preview / automation
 
     public void PrepareStaticCapture() {
       logicalRoot.BeginAnimation(UIElement.OpacityProperty, null);
@@ -217,12 +153,10 @@ namespace EotInstaller {
       if (!new[] { 12, 1, 2, 3, 4, 5 }.Contains(language)) throw new ArgumentOutOfRangeException("language");
       selectedLanguage = language;
       string name = (pageName ?? "language").ToLowerInvariant();
+      // V1 page names still resolve: the middle of the old wizard is one screen now.
       if (name == "language") page = Page.Language;
-      else if (name == "welcome") page = Page.Welcome;
-      else if (name == "components") page = Page.Components;
-      else if (name == "source") page = Page.Source;
-      else if (name == "destination") page = Page.Destination;
-      else if (name == "ready") page = Page.Ready;
+      else if (name == "setup" || name == "welcome" || name == "components" || name == "source" ||
+               name == "destination" || name == "ready") page = Page.Setup;
       else if (name == "installing") page = Page.Installing;
       else if (name == "done") page = Page.Done;
       else if (name == "failed") page = Page.Failed;
@@ -239,20 +173,19 @@ namespace EotInstaller {
       page = Page.Installing; RenderPage();
       Action<double> update = value => {
         if (progressBar != null) progressBar.Value = value;
-        if (progressText != null) progressText.Text = "Распаковка источника  //  " + value.ToString("0.0") + "%\nData/Streams.dat";
+        if (progressText != null) progressText.Text = Phase("Распаковка источника") + "  //  " + value.ToString("0.0") + "%\nData/Streams.dat";
         if (progressDetails != null) progressDetails.Text = "5.21 ГБ / 11.92 ГБ     612 МБ/с     осталось ~11 сек";
       };
       update(47.3);
       if (animate) {
         var started = DateTime.UtcNow;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(70) };
-        timer.Tick += delegate {
-          double value = (DateTime.UtcNow - started).TotalSeconds * 8.5 % 100;
-          update(value);
-        };
+        timer.Tick += delegate { update((DateTime.UtcNow - started).TotalSeconds * 8.5 % 100); };
         timer.Start();
       }
     }
+
+    // ------------------------------------------------------------------ chrome
 
     static Brush Solid(string value) { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(value)); }
 
@@ -263,7 +196,7 @@ namespace EotInstaller {
 
       var glow = new Rectangle { IsHitTestVisible = false };
       glow.Fill = new RadialGradientBrush {
-        Center = new Point(0.35, 0.48), GradientOrigin = new Point(0.35, 0.48), RadiusX = 0.66, RadiusY = 0.92,
+        Center = new Point(0.33, 0.48), GradientOrigin = new Point(0.33, 0.48), RadiusX = 0.66, RadiusY = 0.92,
         GradientStops = {
           new GradientStop((Color)ColorConverter.ConvertFromString("#8842CFFF"), 0),
           new GradientStop((Color)ColorConverter.ConvertFromString("#44204C85"), 0.38),
@@ -275,26 +208,23 @@ namespace EotInstaller {
         EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
       logicalRoot.Children.Add(glow);
 
-      var canvas = new Canvas { IsHitTestVisible = false, Opacity = 0.38 };
+      var canvas = new Canvas { IsHitTestVisible = false, Opacity = 0.34 };
       for (int x = 0; x <= 1280; x += 32) canvas.Children.Add(new Line {
-        X1 = x, X2 = x, Y1 = 95, Y2 = 650, Stroke = Solid(x < 510 ? "#183A6888" : "#1320BFCF"), StrokeThickness = 1
-      });
+        X1 = x, X2 = x, Y1 = 95, Y2 = 650, Stroke = Solid(x < 510 ? "#183A6888" : "#1320BFCF"), StrokeThickness = 1 });
       for (int y = 110; y <= 650; y += 24) canvas.Children.Add(new Line {
-        X1 = 0, X2 = 1280, Y1 = y, Y2 = y, Stroke = Solid("#1327B8D8"), StrokeThickness = 1
-      });
+        X1 = 0, X2 = 1280, Y1 = y, Y2 = y, Stroke = Solid("#1327B8D8"), StrokeThickness = 1 });
       for (int i = 0; i < 13; i++) {
         double x = 360 + i * 24;
         canvas.Children.Add(new Line { X1 = x, Y1 = 70, X2 = x + 150 + i * 7, Y2 = 680,
           Stroke = Solid(i % 2 == 0 ? "#5564DFFF" : "#55FF365C"), StrokeThickness = i % 3 == 0 ? 3 : 1 });
       }
-      canvas.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.22, 0.48,
+      canvas.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.22, 0.46,
         TimeSpan.FromSeconds(1.9)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever,
         EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
       logicalRoot.Children.Add(canvas);
 
-      var scan = new Rectangle { IsHitTestVisible = false, Opacity = 0.13 };
-      var drawing = new GeometryDrawing(null, new Pen(Solid("#BBD8FFFF"), 1),
-        new LineGeometry(new Point(0, 0), new Point(0, 1)));
+      var scan = new Rectangle { IsHitTestVisible = false, Opacity = 0.12 };
+      var drawing = new GeometryDrawing(null, new Pen(Solid("#BBD8FFFF"), 1), new LineGeometry(new Point(0, 0), new Point(0, 1)));
       scan.Fill = new DrawingBrush(drawing) { TileMode = TileMode.Tile,
         Viewport = new Rect(0, 0, 1, 4), ViewportUnits = BrushMappingMode.Absolute,
         Viewbox = new Rect(0, 0, 1, 4), ViewboxUnits = BrushMappingMode.Absolute };
@@ -306,15 +236,12 @@ namespace EotInstaller {
         Stretch = Stretch.Uniform, Opacity = opacity, IsHitTestVisible = false,
         HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
         Margin = new Thickness(left, top, 0, 0) };
-      image.Effect = new System.Windows.Media.Effects.DropShadowEffect {
-        BlurRadius = 28, ShadowDepth = 0, Opacity = 0.72,
-        Color = resource.IndexOf("miguel", StringComparison.OrdinalIgnoreCase) >= 0 ?
-          (Color)ColorConverter.ConvertFromString("#228CFF") : (Color)ColorConverter.ConvertFromString("#FF264A")
-      };
+      bool miguel = resource.IndexOf("miguel", StringComparison.OrdinalIgnoreCase) >= 0;
+      image.Effect = new DropShadowEffect { BlurRadius = 28, ShadowDepth = 0, Opacity = 0.72,
+        Color = (Color)ColorConverter.ConvertFromString(miguel ? "#228CFF" : "#FF264A") };
       var drift = new TranslateTransform(); image.RenderTransform = drift;
-      double seconds = resource.IndexOf("miguel", StringComparison.OrdinalIgnoreCase) >= 0 ? 3.4 : 4.2;
       drift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-6, 8,
-        TimeSpan.FromSeconds(seconds)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever,
+        TimeSpan.FromSeconds(miguel ? 3.4 : 4.2)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever,
         EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
       return image;
     }
@@ -335,12 +262,13 @@ namespace EotInstaller {
       header.Children.Add(new Rectangle { Height = 2, VerticalAlignment = VerticalAlignment.Bottom,
         Fill = new LinearGradientBrush((Color)ColorConverter.ConvertFromString("#FFEE294F"),
           (Color)ColorConverter.ConvertFromString("#FF29CFFF"), 0) });
-      var title = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(42, 16, 0, 0) };
-      title.Children.Add(new TextBlock { Text = "SPIDER-MAN: EDGE OF TIME", Foreground = Brushes.White,
-        FontFamily = new FontFamily("Segoe UI Semibold"), FontSize = 29, FontWeight = FontWeights.Bold });
-      title.Children.Add(new TextBlock { Text = "PC EDITION  //  INSTALLER", Foreground = Solid("#65DFFF"),
-        FontFamily = new FontFamily("Consolas"), FontSize = 15, Margin = new Thickness(2, 3, 0, 0) });
-      header.Children.Add(title);
+      header.Children.Add(new Image { Source = LoadImage("EOT.project2099_logo.png"), Width = 355, Height = 82,
+        Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(32, 2, 0, 0), IsHitTestVisible = false });
+      header.Children.Add(new TextBlock { Text = "V2 BETA 1 TEST  //  INSTALLER", Foreground = Solid("#9CE7FF"),
+        FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = FontWeights.SemiBold,
+        HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom,
+        Margin = new Thickness(405, 0, 0, 15), IsHitTestVisible = false });
       var windowButtons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right,
         VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 17, 18, 0) };
       var minimize = SmallButton("—"); minimize.Click += delegate { WindowState = WindowState.Minimized; };
@@ -358,21 +286,17 @@ namespace EotInstaller {
     }
 
     void BuildPanel() {
-      contentPanel.HorizontalAlignment = HorizontalAlignment.Right;
-      contentPanel.VerticalAlignment = VerticalAlignment.Stretch;
-      contentPanel.Width = 720;
-      contentPanel.Margin = new Thickness(0, 116, 38, 92);
+      var panel = new Grid { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Stretch,
+        Width = 760, Margin = new Thickness(0, 112, 34, 88) };
       var border = new Border { Background = Solid("#E508111C"), BorderBrush = Solid("#804BD8FF"),
-        BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(32, 25, 32, 24) };
-      border.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 32, ShadowDepth = 0,
-        Opacity = 0.80, Color = Colors.Black };
+        BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(30, 22, 30, 22) };
+      border.Effect = new DropShadowEffect { BlurRadius = 32, ShadowDepth = 0, Opacity = 0.80, Color = Colors.Black };
       var stack = new StackPanel();
-      pageKicker.FontFamily = new FontFamily("Consolas"); pageKicker.FontSize = 12;
-      pageKicker.Foreground = Solid("#FF5CD8FF");
+      pageKicker.FontFamily = new FontFamily("Consolas"); pageKicker.FontSize = 12; pageKicker.Foreground = Solid("#FF5CD8FF");
       pageTitle.FontFamily = new FontFamily("Segoe UI Semibold"); pageTitle.FontWeight = FontWeights.SemiBold;
-      pageTitle.FontSize = 34; pageTitle.Foreground = Brushes.White; pageTitle.Margin = new Thickness(0, 6, 0, 20);
+      pageTitle.FontSize = 32; pageTitle.Foreground = Brushes.White; pageTitle.Margin = new Thickness(0, 5, 0, 16);
       stack.Children.Add(pageKicker); stack.Children.Add(pageTitle); stack.Children.Add(pageContent);
-      border.Child = stack; contentPanel.Children.Add(border); logicalRoot.Children.Add(contentPanel);
+      border.Child = stack; panel.Children.Add(border); logicalRoot.Children.Add(panel);
     }
 
     void BuildFooter() {
@@ -391,6 +315,16 @@ namespace EotInstaller {
       bar.Children.Add(buttons); footer.Children.Add(bar); logicalRoot.Children.Add(footer);
     }
 
+    void BuildDropHint() {
+      dropHint = new Border { Visibility = Visibility.Collapsed, IsHitTestVisible = false,
+        Background = Solid("#CC04121C"), BorderBrush = Solid("#FF5CD8FF"), BorderThickness = new Thickness(3),
+        CornerRadius = new CornerRadius(6), Margin = new Thickness(90, 130, 90, 110) };
+      dropHint.Child = new TextBlock { Text = "", Name = "dropText", FontFamily = new FontFamily("Segoe UI Semibold"),
+        FontSize = 26, Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center,
+        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+      logicalRoot.Children.Add(dropHint);
+    }
+
     Button AccentButton(string text, bool primary) {
       var button = new Button { Content = text, Height = 38, MinWidth = 126, Margin = new Thickness(9, 0, 0, 0),
         Padding = new Thickness(18, 0, 18, 0), FontFamily = new FontFamily("Segoe UI Semibold"),
@@ -398,6 +332,13 @@ namespace EotInstaller {
         Background = Solid(primary ? "#D41878A2" : "#A914202D"),
         BorderBrush = Solid(primary ? "#FF65DEFF" : "#776F889E"), BorderThickness = new Thickness(1) };
       button.Style = ButtonStyle(primary, false);
+      return button;
+    }
+
+    Button CardButton(string text, bool primary) {
+      var button = AccentButton(text, primary);
+      button.Height = 34; button.MinWidth = 0; button.FontSize = 12;
+      button.Margin = new Thickness(0, 0, 9, 0); button.Padding = new Thickness(15, 0, 15, 0);
       return button;
     }
 
@@ -455,13 +396,13 @@ namespace EotInstaller {
 
     TextBlock Body(string text, double size) {
       return new TextBlock { Text = text, FontFamily = new FontFamily("Segoe UI"), FontSize = size,
-        Foreground = Solid("#E6EAF3F8"), TextWrapping = TextWrapping.Wrap, LineHeight = size * 1.45,
-        Margin = new Thickness(0, 0, 0, 14) };
+        Foreground = Solid("#E6EAF3F8"), TextWrapping = TextWrapping.Wrap, LineHeight = size * 1.42,
+        Margin = new Thickness(0, 0, 0, 12) };
     }
 
-    TextBlock Label(string text) {
-      return new TextBlock { Text = text, FontFamily = new FontFamily("Consolas"), FontSize = 12,
-        Foreground = Solid("#FF62D9FF"), Margin = new Thickness(0, 7, 0, 6) };
+    TextBlock Mono(string text, string colour) {
+      return new TextBlock { Text = text, FontFamily = new FontFamily("Consolas"), FontSize = 12.5,
+        Foreground = Solid(colour), TextWrapping = TextWrapping.Wrap, LineHeight = 18, Margin = new Thickness(0, 0, 0, 0) };
     }
 
     Border InfoBox(UIElement child) {
@@ -469,25 +410,55 @@ namespace EotInstaller {
         BorderThickness = new Thickness(1), Padding = new Thickness(14), Margin = new Thickness(0, 8, 0, 12) };
     }
 
+    // One setup card: state dot, title, status text, its own buttons.
+    Border Card(CardState state, string title, TextBlock status, params UIElement[] controls) {
+      string accent = state == CardState.Ready ? "#FF3BE08A" : state == CardState.Busy || state == CardState.Warn ? "#FFFFC24B"
+        : state == CardState.Failed ? "#FFFF5470" : "#FF4BB4E6";
+      var border = new Border { Background = Solid("#9E091724"), BorderBrush = Solid(state == CardState.Empty ? "#3350B7E0" : accent),
+        BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+        Padding = new Thickness(14, 11, 14, 12), Margin = new Thickness(0, 0, 0, 10) };
+      var grid = new Grid();
+      grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+      grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+      var dot = new Ellipse { Width = 11, Height = 11, Fill = Solid(accent),
+        VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 5, 0, 0) };
+      if (state == CardState.Busy) dot.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.25, 1,
+        TimeSpan.FromSeconds(0.65)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
+      dot.Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 0, Color = (Color)ColorConverter.ConvertFromString(accent), Opacity = 0.9 };
+      Grid.SetColumn(dot, 0); grid.Children.Add(dot);
+
+      var stack = new StackPanel(); Grid.SetColumn(stack, 1);
+      stack.Children.Add(new TextBlock { Text = title, FontFamily = new FontFamily("Segoe UI Semibold"),
+        FontWeight = FontWeights.SemiBold, FontSize = 15, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 5) });
+      stack.Children.Add(status);
+      if (controls != null && controls.Length > 0) {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 9, 0, 0) };
+        foreach (UIElement control in controls) if (control != null) row.Children.Add(control);
+        stack.Children.Add(row);
+      }
+      grid.Children.Add(stack); border.Child = grid;
+      return border;
+    }
+
+    // -------------------------------------------------------------------- pages
+
     void RenderPage() {
       pageContent.Children.Clear();
       nextButton.IsEnabled = true;
-      pageKicker.Text = "GENRY EOT INSTALL SYSTEM  //  " + ((int)page + 1).ToString("00");
+      pageKicker.Text = "PROJECT 2099 INSTALL SYSTEM  //  " + (page == Page.Language ? "01" : page == Page.Setup ? "02" : "03");
       backButton.Content = Nav("back");
-      backButton.Visibility = page == Page.Language || page == Page.Installing || page == Page.Done ? Visibility.Collapsed : Visibility.Visible;
-      nextButton.Visibility = page == Page.Installing || page == Page.Done || page == Page.Failed ? Visibility.Collapsed : Visibility.Visible;
-      closeButton.Content = page == Page.Installing ? Nav("cancel") : Nav("quit");
+      backButton.Visibility = page == Page.Setup ? Visibility.Visible : Visibility.Collapsed;
+      nextButton.Visibility = page == Page.Installing || page == Page.Done ? Visibility.Collapsed : Visibility.Visible;
+      closeButton.Content = page == Page.Installing ? Nav("cancel") : page == Page.Done ? Nav("close") : Nav("quit");
       footerStatus.Text = previewMode ? "UI PREVIEW  //  GAME DATA IS NOT INCLUDED" :
-        "TITLE ID 415608B2  //  " + payloadProvider.ChannelVersion + "  //  XBOX 360 SOURCE REQUIRED";
-      peterImage.Opacity = page == Page.Source || page == Page.Ready ? 0.66 : 0.42;
+        "TITLE ID 415608B2  //  " + payloadProvider.ChannelVersion + "  //  " +
+        L("НУЖНА ВАША КОПИЯ ДЛЯ XBOX 360", "YOUR OWN XBOX 360 COPY IS REQUIRED", "EIGENE XBOX-360-KOPIE ERFORDERLICH",
+          "VOTRE PROPRE COPIE XBOX 360 EST REQUISE", "SERVE UNA TUA COPIA XBOX 360", "SE REQUIERE TU PROPIA COPIA DE XBOX 360");
+      peterImage.Opacity = page == Page.Setup ? 0.62 : 0.42;
       miguelImage.Opacity = page == Page.Done ? 1.0 : 0.95;
 
       if (page == Page.Language) ShowLanguage();
-      else if (page == Page.Welcome) ShowWelcome();
-      else if (page == Page.Components) ShowComponents();
-      else if (page == Page.Source) ShowSource();
-      else if (page == Page.Destination) ShowDestination();
-      else if (page == Page.Ready) ShowReady();
+      else if (page == Page.Setup) ShowSetup();
       else if (page == Page.Installing) ShowInstalling();
       else if (page == Page.Done) ShowDone();
       else ShowFailed();
@@ -497,12 +468,12 @@ namespace EotInstaller {
     void ShowLanguage() {
       pageTitle.Text = L("ВЫБЕРИТЕ ЯЗЫК", "SELECT LANGUAGE", "SPRACHE WÄHLEN", "CHOISISSEZ LA LANGUE", "SELEZIONA LA LINGUA", "SELECCIONA EL IDIOMA");
       pageContent.Children.Add(Body(L(
-        "Выбранный язык используется мастером и станет языком по умолчанию. Все шесть языков всё равно устанавливаются вместе.",
-        "The selected language is used by the installer and becomes the default. All six languages are installed together.",
-        "Die gewählte Sprache wird im Installer und als Standardsprache verwendet. Alle sechs Sprachen werden installiert.",
-        "La langue choisie sera utilisée par l’installateur et par défaut. Les six langues seront installées.",
-        "La lingua scelta verrà usata dall’installer e come predefinita. Verranno installate tutte e sei le lingue.",
-        "El idioma elegido se usará en el instalador y como predeterminado. Se instalarán los seis idiomas."), 16));
+        "Язык установщика и язык игры по умолчанию. Все шесть языков ставятся вместе — переключить можно прямо в игре.",
+        "The installer language and the game's default. All six languages are installed together and can be switched in-game.",
+        "Sprache des Installers und Standardsprache des Spiels. Alle sechs Sprachen werden installiert und sind im Spiel umschaltbar.",
+        "Langue de l’installateur et langue par défaut du jeu. Les six langues sont installées et permutables en jeu.",
+        "Lingua dell’installer e predefinita del gioco. Tutte e sei le lingue vengono installate e sono selezionabili nel gioco.",
+        "Idioma del instalador y predeterminado del juego. Se instalan los seis idiomas y se pueden cambiar dentro del juego."), 16));
       var grid = new UniformGrid { Columns = 2, Rows = 3, Margin = new Thickness(0, 4, 0, 0) };
       AddLanguage(grid, "РУССКИЙ", 12); AddLanguage(grid, "ENGLISH", 1);
       AddLanguage(grid, "DEUTSCH", 2); AddLanguage(grid, "FRANÇAIS", 3);
@@ -517,154 +488,287 @@ namespace EotInstaller {
       panel.Children.Add(button);
     }
 
-    void ShowWelcome() {
-      pageTitle.Text = L("ДВЕ ЭПОХИ. ОДНА СУДЬБА.", "TWO ERAS. ONE DESTINY.");
+    void ShowSetup() {
+      pageTitle.Text = L("СБОРКА PC EDITION", "BUILD THE PC EDITION", "PC EDITION ERSTELLEN",
+        "CRÉER LA PC EDITION", "CREA LA PC EDITION", "CREAR LA PC EDITION");
       pageContent.Children.Add(Body(L(
-        "Добро пожаловать в установщик Spider-Man: Edge of Time — PC Edition. Он соберёт готовый порт из вашей копии Xbox 360 и добавит принятые PC-фиксы.",
-        "Welcome to the Spider-Man: Edge of Time — PC Edition installer. It builds the complete port from your Xbox 360 copy and applies the accepted PC fixes."), 18));
-      pageContent.Children.Add(InfoBox(Body(L(
-        "ISO не входит в комплект и ниоткуда не скачивается. Подойдёт поддерживаемый XDVDFS ISO, GOD/00007000 либо папка с Default.xex и Data.",
-        "No ISO is included or downloaded. Provide a supported XDVDFS ISO, GOD/00007000 or an extracted folder containing Default.xex and Data."), 14)));
-      pageContent.Children.Add(Body(L("Установятся русский перевод, оригинальные языки, управление мышью, B/E и Y/MMB, аудиофиксы, шрифты и Launcher.",
-        "Russian and original languages, mouse controls, B/E and Y/MMB prompts, audio fixes, fonts and Launcher are installed together."), 15));
-      nextButton.Content = Nav("next");
+        "Заполните три пункта в любом порядке. ISO, ZIP или папку можно просто перетащить в это окно.",
+        "Fill in the three items in any order. An ISO, ZIP or folder can simply be dropped onto this window.",
+        "Fülle die drei Punkte in beliebiger Reihenfolge aus. ISO, ZIP oder Ordner kannst du einfach hierher ziehen.",
+        "Renseignez les trois points dans n’importe quel ordre. Une ISO, un ZIP ou un dossier peut être glissé sur cette fenêtre.",
+        "Completa i tre punti in qualsiasi ordine. Puoi trascinare qui una ISO, uno ZIP o una cartella.",
+        "Completa los tres puntos en cualquier orden. Puedes arrastrar aquí una ISO, un ZIP o una carpeta."), 15));
+
+      // --- 1. game source -----------------------------------------------------
+      sourceStatus = Mono(SourceText(), probe != null ? "#FFA8F0C8" : sourceState == CardState.Failed ? "#FFFFA9B8" : "#FF9FC4D8");
+      var pickIso = CardButton(L("ISO / ZIP", "ISO / ZIP", "ISO / ZIP", "ISO / ZIP", "ISO / ZIP", "ISO / ZIP"), probe == null);
+      var pickFolder = CardButton(L("ПАПКА", "FOLDER", "ORDNER", "DOSSIER", "CARTELLA", "CARPETA"), false);
+      pickIso.Click += async delegate { await PickIso(); };
+      pickFolder.Click += async delegate { await PickFolder(); };
+      pageContent.Children.Add(Card(probe != null ? CardState.Ready : sourceState,
+        "1  " + L("ВАША КОПИЯ ИГРЫ", "YOUR COPY OF THE GAME", "DEINE SPIELKOPIE", "VOTRE COPIE DU JEU", "LA TUA COPIA DEL GIOCO", "TU COPIA DEL JUEGO"),
+        sourceStatus, pickIso, pickFolder));
+
+      // --- 2. destination -----------------------------------------------------
+      destinationStatus = Mono(DestinationText(), !DestinationReady() ? "#FFFFA9B8" : DestinationRoomy() ? "#FFA8F0C8" : "#FFFFDFA0");
+      var changeFolder = CardButton(L("ИЗМЕНИТЬ", "CHANGE", "ÄNDERN", "MODIFIER", "CAMBIA", "CAMBIAR"), false);
+      changeFolder.Click += delegate { PickDestination(); };
+      pageContent.Children.Add(Card(!DestinationReady() ? CardState.Empty : DestinationRoomy() ? CardState.Ready : CardState.Warn,
+        "2  " + L("КУДА УСТАНОВИТЬ", "WHERE TO INSTALL", "INSTALLATIONSORT", "OÙ INSTALLER", "DOVE INSTALLARE", "DÓNDE INSTALAR"),
+        destinationStatus, changeFolder));
+
+      // --- 3. PC Edition files ------------------------------------------------
+      payloadStatus = Mono(PayloadText(), payloadPath != null ? "#FFA8F0C8" : payloadState == CardState.Failed ? "#FFFFA9B8" : "#FF9FC4D8");
+      payloadProgress = new ProgressBar { Minimum = 0, Maximum = 100, Height = 6, Width = 300,
+        Value = payloadPath != null ? 100 : 0, Margin = new Thickness(0, 9, 0, 0),
+        HorizontalAlignment = HorizontalAlignment.Left,
+        Visibility = payloadRunning ? Visibility.Visible : Visibility.Collapsed };
+      payloadProgress.Style = ProgressStyle();
+      payloadRetry = CardButton(L("ПОВТОРИТЬ", "RETRY", "ERNEUT VERSUCHEN", "RÉESSAYER", "RIPROVA", "REINTENTAR"), payloadPath == null);
+      payloadManual = CardButton(L("УКАЗАТЬ ФАЙЛЫ", "POINT TO FILES", "DATEIEN WÄHLEN", "INDIQUER LES FICHIERS", "INDICA I FILE", "INDICAR ARCHIVOS"), false);
+      payloadRetry.Click += async delegate { await ResolvePayload(null, true); };
+      payloadManual.Click += async delegate { await PickPayload(); };
+      payloadRetry.IsEnabled = !payloadRunning; payloadManual.IsEnabled = !payloadRunning;
+      var payloadCard = Card(payloadPath != null ? CardState.Ready : payloadRunning ? CardState.Busy : payloadState,
+        "3  " + L("ФАЙЛЫ PC EDITION", "PC EDITION FILES", "PC-EDITION-DATEIEN", "FICHIERS PC EDITION", "FILE PC EDITION", "ARCHIVOS PC EDITION"),
+        payloadStatus, payloadRetry, payloadManual);
+      pageContent.Children.Add(payloadCard);
+      ((StackPanel)((Grid)payloadCard.Child).Children[1]).Children.Insert(2, payloadProgress);
+
+      pageContent.Children.Add(Mono(L(
+        "Игровой образ не входит в установщик и никуда не отправляется: он только читается с вашего диска.",
+        "No game image is bundled or uploaded: your copy is only read from your disk.",
+        "Kein Spielabbild wird mitgeliefert oder hochgeladen: deine Kopie wird nur gelesen.",
+        "Aucune image du jeu n’est fournie ni envoyée : votre copie est seulement lue.",
+        "Nessuna immagine del gioco è inclusa o caricata: la tua copia viene solo letta.",
+        "No se incluye ni se envía ninguna imagen del juego: tu copia solo se lee."), "#88A7C0D2"));
+
+      nextButton.Content = Nav("install");
+      nextButton.IsEnabled = probe != null && payloadPath != null && DestinationReady();
     }
 
-    void ShowComponents() {
-      pageTitle.Text = L("ФАЙЛЫ PC EDITION", "PC EDITION FILES", "PC-EDITION-DATEIEN", "FICHIERS PC EDITION", "FILE PC EDITION", "ARCHIVOS PC EDITION");
-      pageContent.Children.Add(Body(L(
-        "Инсталлер скачает с GitHub только runtime, Launcher, исправления, шрифты и дельты перевода. Игровые ресурсы берутся из выбранного вами ISO/GOD.",
-        "The installer downloads only the runtime, Launcher, fixes, fonts and translation deltas from GitHub. Game assets come from your ISO/GOD."), 16));
-      componentStatus = Body(payloadPath == null ? L("Проверка payload ещё не завершена.", "Payload has not been verified yet.") :
-        L("Payload найден и готов к установке.", "Payload is verified and ready."), 14);
-      pageContent.Children.Add(InfoBox(componentStatus));
-      componentProgress = new ProgressBar { Minimum = 0, Maximum = 100, Height = 16, Value = payloadPath == null ? 0 : 100,
-        Foreground = Solid("#FF32CBFF"), Background = Solid("#FF0C1A25"), Margin = new Thickness(0, 4, 0, 15) };
-      componentProgress.Style = ProgressStyle();
-      pageContent.Children.Add(componentProgress);
-      var download = AccentButton(L("СКАЧАТЬ / ПРОВЕРИТЬ", "DOWNLOAD / VERIFY"), true);
-      download.Click += async delegate { await EnsurePayload(); }; pageContent.Children.Add(download);
-      nextButton.Content = Nav("next"); nextButton.IsEnabled = payloadPath != null;
+    string SourceText() {
+      if (probe != null)
+        return String.Format(L("Проверено: {0}\n{1} · ревизия: {2}", "Verified: {0}\n{1} · revision: {2}",
+          "Geprüft: {0}\n{1} · Revision: {2}", "Vérifié : {0}\n{1} · révision : {2}",
+          "Verificato: {0}\n{1} · revisione: {2}", "Verificado: {0}\n{1} · revisión: {2}"),
+          probe.DisplayName, probe.Kind, probe.Region);
+      if (sourceState == CardState.Busy)
+        return L("Проверяю ревизию…", "Checking the revision…", "Revision wird geprüft…", "Vérification de la révision…", "Verifica della revisione…", "Comprobando la revisión…");
+      if (sourceState == CardState.Failed) return failureHint;
+      return L("Xbox 360 ISO, ZIP, GOD или распакованная папка. Корень с Default.xex найдётся сам.",
+        "An Xbox 360 ISO, ZIP, GOD container or an extracted folder. The root with Default.xex is found automatically.",
+        "Xbox-360-ISO, ZIP, GOD-Container oder entpackter Ordner. Der Stamm mit Default.xex wird selbst gefunden.",
+        "Une ISO Xbox 360, un ZIP, un conteneur GOD ou un dossier extrait. La racine avec Default.xex est trouvée automatiquement.",
+        "Una ISO Xbox 360, uno ZIP, un contenitore GOD o una cartella estratta. La radice con Default.xex viene trovata da sola.",
+        "Una ISO de Xbox 360, un ZIP, un contenedor GOD o una carpeta extraída. La raíz con Default.xex se encuentra sola.");
     }
 
-    void ShowSource() {
-      pageTitle.Text = L("ИСТОЧНИК ИГРЫ", "GAME SOURCE");
-      pageContent.Children.Add(Body(L("Укажите USA/Europe ISO, ZIP, GOD либо внешнюю папку игры. Инсталлер сам найдёт корень с Default.xex.",
-        "Select a Spider-Man: Edge of Time USA/Europe ISO, ZIP, GOD or an outer folder. The installer finds the game root automatically."), 17));
-      var row = new StackPanel { Orientation = Orientation.Horizontal };
-      var iso = AccentButton(L("ВЫБРАТЬ ISO / ZIP", "SELECT ISO / ZIP"), true);
-      var folder = AccentButton(L("ВЫБРАТЬ ПАПКУ", "SELECT FOLDER"), false);
-      iso.Click += async delegate { await PickIso(); }; folder.Click += async delegate { await PickFolder(); };
-      row.Children.Add(iso); row.Children.Add(folder); pageContent.Children.Add(row);
-      sourceStatus = Body(probe == null ? L("Источник ещё не выбран.", "No source selected.") :
-        String.Format(L("Проверено: {0}\nТип: {1}\nРевизия: {2}", "Verified: {0}\nType: {1}\nRevision: {2}"),
-          probe.DisplayName, probe.Kind, probe.Region), 14);
-      pageContent.Children.Add(InfoBox(sourceStatus));
-      nextButton.Content = Nav("next"); nextButton.IsEnabled = probe != null;
+    bool DestinationReady() {
+      if (String.IsNullOrWhiteSpace(destinationPath)) return false;
+      try {
+        string full = IOPath.GetFullPath(destinationPath);
+        if (String.Equals(full.TrimEnd('\\', '/'), (IOPath.GetPathRoot(full) ?? "").TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase)) return false;
+        return !(Directory.Exists(full) && Directory.EnumerateFileSystemEntries(full).Any()) && FreeBytes(full) >= 0;
+      } catch { return false; }
     }
 
-    void ShowDestination() {
-      pageTitle.Text = L("ПАПКА PC EDITION", "PC EDITION FOLDER");
-      pageContent.Children.Add(Body(L("Выберите пустую папку. Инсталлер туда не копируется — внутри останутся Launcher.exe и SpiderManEOT.exe.",
-        "Choose an empty folder. The installer itself is not copied; the result contains Launcher.exe and SpiderManEOT.exe."), 17));
-      var choose = AccentButton(L("ИЗМЕНИТЬ ПАПКУ", "CHANGE FOLDER"), true);
-      choose.Click += delegate { PickDestination(); }; pageContent.Children.Add(choose);
-      destinationStatus = Body(destinationPath, 14); pageContent.Children.Add(InfoBox(destinationStatus));
-      nextButton.Content = Nav("next"); nextButton.IsEnabled = !String.IsNullOrWhiteSpace(destinationPath);
+    long NeededBytes() { return probe != null ? probe.RequiredBytes * 2 + (3L << 30) : 14L << 30; }
+
+    bool DestinationRoomy() {
+      long free = FreeBytes(destinationPath);
+      return free < 0 || free >= NeededBytes();
     }
 
-    void ShowReady() {
-      pageTitle.Text = L("ГОТОВО К СБОРКЕ", "READY TO BUILD");
-      pageContent.Children.Add(Body(L("Источник проверен. PC Edition будет собрана во временной папке и появится в выбранном месте только после полной проверки.",
-        "The source is verified. PC Edition is built in a staging folder and appears at the destination only after full verification."), 17));
-      pageContent.Children.Add(InfoBox(Body(String.Format(L("ISO/папка: {0}\nУстановка: {1}\nФайлов источника: {2}",
-        "ISO/folder: {0}\nDestination: {1}\nSource files: {2}"), sourcePath, destinationPath, core.Manifest.Files.Count), 14)));
-      pageContent.Children.Add(Body(L("Нажмите «УСТАНОВИТЬ». На SSD основное время займёт чтение ISO и применение русских дельт.",
-        "Press INSTALL. On an SSD, most time is spent reading the ISO and applying Russian deltas."), 14));
-      nextButton.Content = Nav("install"); nextButton.IsEnabled = true;
+    string DestinationText() {
+      string text = destinationPath ?? "";
+      try {
+        string full = IOPath.GetFullPath(destinationPath);
+        if (Directory.Exists(full) && Directory.EnumerateFileSystemEntries(full).Any())
+          return text + "\n" + L("Папка не пуста — выберите другую.", "The folder is not empty — choose another one.",
+            "Der Ordner ist nicht leer — wähle einen anderen.", "Le dossier n’est pas vide — choisissez-en un autre.",
+            "La cartella non è vuota — scegline un’altra.", "La carpeta no está vacía — elige otra.");
+        long free = FreeBytes(full);
+        long needed = NeededBytes();
+        string line = String.Format(L("Свободно {0}, нужно около {1}.", "{0} free, about {1} needed.",
+          "{0} frei, etwa {1} nötig.", "{0} libres, environ {1} nécessaires.",
+          "{0} liberi, servono circa {1}.", "{0} libres, se necesitan unos {1}."), FormatBytes(free), FormatBytes(needed));
+        if (free >= 0 && free < needed) line += "  " + L("Места может не хватить.", "This may not be enough.",
+          "Das könnte zu wenig sein.", "Cela peut être insuffisant.", "Potrebbe non bastare.", "Puede que no sea suficiente.");
+        return text + "\n" + line;
+      } catch { return text; }
+    }
+
+    static long FreeBytes(string path) {
+      try { return new DriveInfo(IOPath.GetPathRoot(IOPath.GetFullPath(path))).AvailableFreeSpace; } catch { return -1; }
+    }
+
+    string PayloadText() {
+      if (payloadPath != null)
+        return L("Файлы проверены и готовы.", "The files are verified and ready.", "Die Dateien sind geprüft und bereit.",
+          "Les fichiers sont vérifiés et prêts.", "I file sono verificati e pronti.", "Los archivos están verificados y listos.") + "\n" + payloadPath;
+      if (payloadRunning)
+        return L("Ищу и проверяю файлы…", "Looking for the files and verifying them…", "Dateien werden gesucht und geprüft…",
+          "Recherche et vérification des fichiers…", "Ricerca e verifica dei file…", "Buscando y verificando los archivos…");
+      if (payloadState == CardState.Failed) return payloadError;
+      return L("Рантайм, лаунчер, шрифты и дельты перевода. Берутся рядом с установщиком или скачиваются.",
+        "Runtime, launcher, fonts and translation deltas. Taken from next to the installer or downloaded.",
+        "Runtime, Launcher, Schriften und Übersetzungs-Deltas. Neben dem Installer oder als Download.",
+        "Runtime, launcher, polices et deltas de traduction. Pris à côté de l’installateur ou téléchargés.",
+        "Runtime, launcher, font e delta di traduzione. Presi accanto all’installer o scaricati.",
+        "Runtime, launcher, fuentes y deltas de traducción. Tomados junto al instalador o descargados.");
     }
 
     void ShowInstalling() {
-      pageTitle.Text = L("СБОРКА PC EDITION", "BUILDING PC EDITION");
-      progressText = Body(L("Подготовка…", "Preparing…"), 15);
-      progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Height = 18, Value = 0,
-        Foreground = Solid("#FF32CBFF"), Background = Solid("#FF0C1A25"), Margin = new Thickness(0, 10, 0, 18) };
+      pageTitle.Text = L("СБОРКА PC EDITION", "BUILDING THE PC EDITION", "PC EDITION WIRD ERSTELLT",
+        "CONSTRUCTION DE LA PC EDITION", "CREAZIONE DELLA PC EDITION", "CREANDO LA PC EDITION");
+      progressText = Body(L("Подготовка…", "Preparing…", "Vorbereitung…", "Préparation…", "Preparazione…", "Preparando…"), 15);
+      progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Height = 18, Value = 0, Margin = new Thickness(0, 10, 0, 16) };
       progressBar.Style = ProgressStyle();
       progressDetails = new TextBlock { FontFamily = new FontFamily("Consolas"), FontSize = 13,
         Foreground = Solid("#FF6DDCFF"), Margin = new Thickness(0, 0, 0, 12) };
       pageContent.Children.Add(progressText); pageContent.Children.Add(progressBar); pageContent.Children.Add(progressDetails);
-      pageContent.Children.Add(InfoBox(Body(L("Не закрывайте окно во время записи. Отмена удаляет только временную staging-папку.",
-        "Do not close the window while files are written. Cancel removes only the temporary staging folder."), 14)));
+      pageContent.Children.Add(InfoBox(Body(L(
+        "Готовая папка появляется только после полной проверки. «Отмена» удаляет лишь временную папку сборки.",
+        "The final folder appears only after full verification. Cancel removes just the temporary build folder.",
+        "Der Zielordner erscheint erst nach vollständiger Prüfung. Abbrechen entfernt nur den temporären Ordner.",
+        "Le dossier final n’apparaît qu’après vérification complète. Annuler ne supprime que le dossier temporaire.",
+        "La cartella finale compare solo dopo la verifica completa. Annulla rimuove solo la cartella temporanea.",
+        "La carpeta final aparece solo tras la verificación completa. Cancelar elimina solo la carpeta temporal."), 14)));
     }
 
     void ShowDone() {
-      pageTitle.Text = L("PC EDITION ГОТОВА", "PC EDITION IS READY");
-      pageContent.Children.Add(Body(L("Установка и проверка завершены. Запускайте игру через Launcher.exe — все PC-фиксы уже находятся в сборке.",
-        "Installation and verification are complete. Start through Launcher.exe; all PC fixes are already included."), 18));
-      var launch = AccentButton(L("ЗАПУСТИТЬ LAUNCHER", "START LAUNCHER"), true);
-      launch.Click += delegate { string file = IOPath.Combine(destinationPath, "Launcher.exe");
-        Process.Start(new ProcessStartInfo(file) { WorkingDirectory = destinationPath, UseShellExecute = true }); Close(); };
-      pageContent.Children.Add(launch);
+      pageTitle.Text = L("PC EDITION ГОТОВА", "THE PC EDITION IS READY", "PC EDITION IST BEREIT",
+        "LA PC EDITION EST PRÊTE", "LA PC EDITION È PRONTA", "LA PC EDITION ESTÁ LISTA");
+      pageContent.Children.Add(Body(L(
+        "Установка и проверка завершены. Запускайте игру через Launcher.exe — там же настройки, моды и обновления.",
+        "Installation and verification are complete. Start through Launcher.exe — settings, mods and updates live there.",
+        "Installation und Prüfung sind abgeschlossen. Starte über Launcher.exe — dort liegen Einstellungen, Mods und Updates.",
+        "L’installation et la vérification sont terminées. Lancez Launcher.exe — réglages, mods et mises à jour s’y trouvent.",
+        "Installazione e verifica completate. Avvia Launcher.exe — lì trovi impostazioni, mod e aggiornamenti.",
+        "La instalación y la verificación han terminado. Inicia Launcher.exe — allí están los ajustes, mods y actualizaciones."), 17));
+      pageContent.Children.Add(InfoBox(Mono(destinationPath, "#FFA8F0C8")));
+      var row = new StackPanel { Orientation = Orientation.Horizontal };
+      var launch = CardButton(L("ЗАПУСТИТЬ LAUNCHER", "START LAUNCHER", "LAUNCHER STARTEN", "LANCER LE LAUNCHER", "AVVIA LAUNCHER", "INICIAR LAUNCHER"), true);
+      launch.Height = 38; launch.FontSize = 13;
+      launch.Click += delegate {
+        try {
+          Process.Start(new ProcessStartInfo(IOPath.Combine(destinationPath, "Launcher.exe")) {
+            WorkingDirectory = destinationPath, UseShellExecute = true });
+          Close();
+        } catch (Exception error) { footerStatus.Text = error.Message; }
+      };
+      var open = CardButton(L("ОТКРЫТЬ ПАПКУ", "OPEN FOLDER", "ORDNER ÖFFNEN", "OUVRIR LE DOSSIER", "APRI CARTELLA", "ABRIR CARPETA"), false);
+      open.Height = 38; open.FontSize = 13;
+      open.Click += delegate { try { Process.Start(new ProcessStartInfo(destinationPath) { UseShellExecute = true }); } catch { } };
+      row.Children.Add(launch); row.Children.Add(open);
+      pageContent.Children.Add(row);
       closeButton.Content = Nav("close");
     }
 
     void ShowFailed() {
-      pageTitle.Text = L("УСТАНОВКА ОСТАНОВЛЕНА", "INSTALLATION STOPPED");
-      nextButton.Visibility = Visibility.Visible; nextButton.Content = L("НАЗАД К ИСТОЧНИКУ", "BACK TO SOURCE");
-      pageContent.Children.Add(InfoBox(Body(footerStatus.Tag as string ?? L("Неизвестная ошибка.", "Unknown error."), 14)));
-      pageContent.Children.Add(Body(L("Готовая папка не изменена. Временные файлы удалены.",
-        "The final folder was not changed. Temporary files were removed."), 14));
+      pageTitle.Text = L("УСТАНОВКА ОСТАНОВЛЕНА", "INSTALLATION STOPPED", "INSTALLATION ANGEHALTEN",
+        "INSTALLATION ARRÊTÉE", "INSTALLAZIONE INTERROTTA", "INSTALACIÓN DETENIDA");
+      nextButton.Visibility = Visibility.Visible;
+      nextButton.Content = L("ВЕРНУТЬСЯ", "GO BACK", "ZURÜCK", "REVENIR", "TORNA INDIETRO", "VOLVER");
+      pageContent.Children.Add(InfoBox(Mono(failureHint ?? L("Неизвестная ошибка.", "Unknown error.", "Unbekannter Fehler.", "Erreur inconnue.", "Errore sconosciuto.", "Error desconocido."), "#FFFFC9D2")));
+      pageContent.Children.Add(Body(L(
+        "Готовая папка не изменена, временные файлы удалены. Исправьте причину и нажмите «Вернуться» — выбранные пункты сохранились.",
+        "The destination folder is untouched and temporary files were removed. Fix the cause and press Go back — your choices are kept.",
+        "Der Zielordner ist unverändert, temporäre Dateien wurden entfernt. Behebe die Ursache und drücke Zurück — deine Auswahl bleibt erhalten.",
+        "Le dossier de destination est intact et les fichiers temporaires ont été supprimés. Corrigez la cause puis revenez — vos choix sont conservés.",
+        "La cartella di destinazione è intatta e i file temporanei sono stati rimossi. Risolvi la causa e torna indietro — le scelte restano.",
+        "La carpeta de destino está intacta y los archivos temporales se eliminaron. Corrige la causa y vuelve — tus elecciones se conservan."), 14));
     }
 
+    // ------------------------------------------------------------------ actions
+
+    async Task Next() {
+      if (page == Page.Language) { page = Page.Setup; RenderPage(); await ResolvePayload(null, false); return; }
+      if (page == Page.Setup) { await BeginInstall(); return; }
+      if (page == Page.Failed) { page = Page.Setup; RenderPage(); return; }
+      RenderPage();
+    }
+
+    void Back() { if (page == Page.Setup) { page = Page.Language; RenderPage(); } }
+
     async Task PickIso() {
-      var dialog = new Microsoft.Win32.OpenFileDialog { Title = L("Выберите Xbox 360 ISO или ZIP", "Select Xbox 360 ISO or ZIP"),
-        Filter = "Xbox 360 source (*.iso;*.zip)|*.iso;*.zip|Xbox 360 ISO (*.iso)|*.iso|ZIP archive (*.zip)|*.zip|All files (*.*)|*.*", CheckFileExists = true, Multiselect = false };
+      var dialog = new Microsoft.Win32.OpenFileDialog {
+        Title = L("Выберите ISO или ZIP с игрой", "Select the game ISO or ZIP", "Spiel-ISO oder ZIP wählen",
+          "Sélectionnez l’ISO ou le ZIP du jeu", "Seleziona la ISO o lo ZIP del gioco", "Selecciona la ISO o el ZIP del juego"),
+        Filter = "Xbox 360 source (*.iso;*.zip)|*.iso;*.zip|Xbox 360 ISO (*.iso)|*.iso|ZIP archive (*.zip)|*.zip|All files (*.*)|*.*",
+        CheckFileExists = true, Multiselect = false };
       if (dialog.ShowDialog(this) == true) await Probe(dialog.FileName);
     }
 
     async Task PickFolder() {
-      using (var dialog = new Forms.FolderBrowserDialog { Description = L("Выберите папку игры, её внешнюю папку либо GOD/00007000", "Select the game folder, its outer folder or GOD/00007000"),
-        ShowNewFolderButton = false }) if (dialog.ShowDialog() == Forms.DialogResult.OK) await Probe(dialog.SelectedPath);
+      using (var dialog = new Forms.FolderBrowserDialog {
+        Description = L("Выберите папку игры, её внешнюю папку либо GOD/00007000", "Select the game folder, its outer folder or GOD/00007000",
+          "Spielordner, äußeren Ordner oder GOD/00007000 wählen", "Sélectionnez le dossier du jeu, son dossier extérieur ou GOD/00007000",
+          "Seleziona la cartella del gioco, quella esterna o GOD/00007000", "Selecciona la carpeta del juego, la exterior o GOD/00007000"),
+        ShowNewFolderButton = false })
+        if (dialog.ShowDialog() == Forms.DialogResult.OK) await Probe(dialog.SelectedPath);
     }
 
     void PickDestination() {
-      using (var dialog = new Forms.FolderBrowserDialog { Description = L("Выберите пустую папку установки", "Select an empty installation folder"),
-        SelectedPath = Directory.Exists(destinationPath) ? destinationPath : IOPath.GetDirectoryName(destinationPath), ShowNewFolderButton = true })
+      using (var dialog = new Forms.FolderBrowserDialog {
+        Description = L("Выберите пустую папку установки", "Select an empty installation folder", "Leeren Installationsordner wählen",
+          "Sélectionnez un dossier d’installation vide", "Seleziona una cartella d’installazione vuota", "Selecciona una carpeta de instalación vacía"),
+        SelectedPath = Directory.Exists(destinationPath) ? destinationPath : IOPath.GetDirectoryName(destinationPath),
+        ShowNewFolderButton = true })
         if (dialog.ShowDialog() == Forms.DialogResult.OK) { destinationPath = dialog.SelectedPath; RenderPage(); }
     }
 
+    async Task PickPayload() {
+      var dialog = new Microsoft.Win32.OpenFileDialog {
+        Title = L("Выберите EOT-PC-Payload ZIP или payload-manifest.json", "Select the EOT-PC-Payload ZIP or payload-manifest.json",
+          "EOT-PC-Payload-ZIP oder payload-manifest.json wählen", "Sélectionnez le ZIP EOT-PC-Payload ou payload-manifest.json",
+          "Seleziona lo ZIP EOT-PC-Payload o payload-manifest.json", "Selecciona el ZIP EOT-PC-Payload o payload-manifest.json"),
+        Filter = "PC Edition files (*.zip;payload-manifest.json)|*.zip;payload-manifest.json|All files (*.*)|*.*",
+        CheckFileExists = true, Multiselect = false };
+      if (dialog.ShowDialog(this) != true) return;
+      string chosen = dialog.FileName;
+      if (String.Equals(IOPath.GetFileName(chosen), "payload-manifest.json", StringComparison.OrdinalIgnoreCase))
+        chosen = IOPath.GetDirectoryName(chosen);
+      await ResolvePayload(chosen, true);
+    }
+
     async Task Probe(string path) {
-      sourcePath = path; probe = null; sourceStatus.Text = L("Проверяю ревизию…", "Checking revision…");
+      sourcePath = path; probe = null; sourceState = CardState.Busy; RenderPage();
+      var token = new CancellationTokenSource();
       try {
-        var token = new CancellationTokenSource();
         probe = await core.ProbeAsync(path, p => Dispatcher.BeginInvoke(new Action(delegate {
-          sourceStatus.Text = Phase(p.Phase) + "\n" + p.CurrentFile + "\n" + (p.Ratio * 100).ToString("0") + "%";
+          if (sourceStatus != null) sourceStatus.Text = Phase(p.Phase) + "  " + (p.Ratio * 100).ToString("0") + "%\n" + p.CurrentFile;
         })), token.Token);
-        RenderPage();
+        sourceState = CardState.Ready;
       } catch (Exception error) {
-        sourceStatus.Text = L("Источник отклонён:\n", "Source rejected:\n") + error.Message;
-        nextButton.IsEnabled = false;
+        sourceState = CardState.Failed;
+        failureHint = L("Источник отклонён: ", "Source rejected: ", "Quelle abgelehnt: ", "Source refusée : ", "Sorgente rifiutata: ", "Origen rechazado: ") + error.Message;
+      } finally { token.Dispose(); RenderPage(); }
+    }
+
+    async Task ResolvePayload(string manualPath, bool force) {
+      if (payloadRunning) return;
+      if (payloadPath != null && !force) return;
+      payloadRunning = true; payloadState = CardState.Busy; payloadPath = null; RenderPage();
+      payloadCancellation = new CancellationTokenSource();
+      try {
+        payloadPath = await payloadProvider.ResolveAsync(manualPath, p => Dispatcher.BeginInvoke(new Action(delegate {
+          if (payloadProgress != null) { payloadProgress.Visibility = Visibility.Visible; payloadProgress.Value = p.Ratio * 100; }
+          if (payloadStatus != null) payloadStatus.Text = Phase(p.Phase) + "  " + (p.Ratio * 100).ToString("0.0") + "%\n" +
+            p.CurrentFile + (p.TotalBytes > 1 ? "\n" + FormatBytes(p.CompletedBytes) + " / " + FormatBytes(p.TotalBytes) : "");
+        })), payloadCancellation.Token);
+        payloadState = CardState.Ready; payloadError = null;
+      } catch (OperationCanceledException) {
+        payloadState = CardState.Empty;
+      } catch (Exception error) {
+        payloadState = CardState.Failed;
+        payloadError = error.Message;
+      } finally {
+        payloadRunning = false;
+        payloadCancellation.Dispose(); payloadCancellation = null;
+        RenderPage();
       }
-    }
-
-    async Task Next() {
-      if (page == Page.Language) page = Page.Welcome;
-      else if (page == Page.Welcome) { page = Page.Components; RenderPage(); await EnsurePayload(); return; }
-      else if (page == Page.Components && payloadPath != null) page = Page.Source;
-      else if (page == Page.Source && probe != null) page = Page.Destination;
-      else if (page == Page.Destination) page = Page.Ready;
-      else if (page == Page.Ready) { await BeginInstall(); return; }
-      else if (page == Page.Failed) page = Page.Source;
-      RenderPage();
-    }
-
-    void Back() {
-      if (page == Page.Welcome) page = Page.Language;
-      else if (page == Page.Components) page = Page.Welcome;
-      else if (page == Page.Source) page = Page.Components;
-      else if (page == Page.Destination) page = Page.Source;
-      else if (page == Page.Ready) page = Page.Destination;
-      RenderPage();
     }
 
     async Task BeginInstall() {
@@ -687,56 +791,103 @@ namespace EotInstaller {
         })), cancellation.Token);
         page = Page.Done;
       } catch (OperationCanceledException) {
-        footerStatus.Tag = L("Установка отменена пользователем.", "Installation was cancelled."); page = Page.Failed;
+        failureHint = L("Установка отменена.", "The installation was cancelled.", "Die Installation wurde abgebrochen.",
+          "L’installation a été annulée.", "L’installazione è stata annullata.", "La instalación fue cancelada.");
+        page = Page.Failed;
       } catch (Exception error) {
-        footerStatus.Tag = error.Message; page = Page.Failed;
-      } finally { if (installClock != null) installClock.Stop(); cancellation.Dispose(); cancellation = null; RenderPage(); }
-    }
-
-    async Task EnsurePayload() {
-      if (page != Page.Components || payloadPath != null) return;
-      nextButton.IsEnabled = false;
-      var token = new CancellationTokenSource();
-      try {
-        payloadPath = await payloadProvider.ResolveAsync(p => Dispatcher.BeginInvoke(new Action(delegate {
-          if (componentProgress != null) componentProgress.Value = p.Ratio * 100;
-          if (componentStatus != null) componentStatus.Text = Phase(p.Phase) + "  //  " + (p.Ratio * 100).ToString("0.0") + "%\n" + p.CurrentFile;
-        })), token.Token);
-        if (componentStatus != null) componentStatus.Text = L("Payload проверен и готов.\n", "Payload verified and ready.\n") + payloadPath;
-        if (componentProgress != null) componentProgress.Value = 100;
-        nextButton.IsEnabled = true;
-      } catch (Exception error) {
-        if (componentStatus != null) componentStatus.Text = L("Не удалось получить payload:\n", "Could not obtain payload:\n") + error.Message;
-      } finally { token.Dispose(); }
+        failureHint = error.Message; page = Page.Failed;
+      } finally {
+        if (installClock != null) installClock.Stop();
+        cancellation.Dispose(); cancellation = null; RenderPage();
+      }
     }
 
     void CancelInstall() { if (cancellation != null) cancellation.Cancel(); }
 
-    void OnKeyDown(object sender, KeyEventArgs e) {
-      if (e.Key == Key.Escape) { if (page == Page.Installing) CancelInstall(); else if (backButton.Visibility == Visibility.Visible) Back(); else Close(); e.Handled = true; }
-      else if (e.Key == Key.Enter && nextButton.Visibility == Visibility.Visible && nextButton.IsEnabled) { nextButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); e.Handled = true; }
+    // -------------------------------------------------------- drag and drop
+
+    void OnDragOver(object sender, DragEventArgs e) {
+      bool accept = page == Page.Setup && e.Data.GetDataPresent(DataFormats.FileDrop);
+      e.Effects = accept ? DragDropEffects.Copy : DragDropEffects.None;
+      ShowDropHint(accept);
+      e.Handled = true;
     }
 
-    string L(string ru, string en, string de = null, string fr = null, string it = null, string es = null) {
+    void ShowDropHint(bool visible) {
+      if (dropHint == null) return;
+      var text = dropHint.Child as TextBlock;
+      if (text != null) text.Text = L("Отпустите — я сам пойму, что это: образ игры или файлы PC Edition",
+        "Drop it — the installer works out whether it is the game or the PC Edition files",
+        "Loslassen — der Installer erkennt selbst, ob es das Spiel oder die PC-Edition-Dateien sind",
+        "Déposez — l’installateur détermine lui-même s’il s’agit du jeu ou des fichiers PC Edition",
+        "Rilascia — l’installer capisce da solo se è il gioco o i file della PC Edition",
+        "Suéltalo — el instalador deduce solo si es el juego o los archivos de PC Edition");
+      dropHint.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    async void OnDrop(object sender, DragEventArgs e) {
+      ShowDropHint(false);
+      if (page != Page.Setup || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+      var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+      if (paths == null || paths.Length == 0) return;
+      string path = paths[0];
+      e.Handled = true;
+      // A payload ZIP or payload folder goes to card 3; everything else is a game source.
+      string name = IOPath.GetFileName(path.TrimEnd('\\', '/'));
+      bool looksLikePayload =
+        name.StartsWith("EOT-PC-Payload", StringComparison.OrdinalIgnoreCase) ||
+        name.StartsWith("Project2099-Payload", StringComparison.OrdinalIgnoreCase) ||
+        (Directory.Exists(path) && File.Exists(IOPath.Combine(path, "payload-manifest.json"))) ||
+        (Directory.Exists(path) && File.Exists(IOPath.Combine(path, "payload", "payload-manifest.json")));
+      if (looksLikePayload) await ResolvePayload(path, true);
+      else if (Directory.Exists(path) && !File.Exists(IOPath.Combine(path, "Default.xex")) && DirectoryIsEmpty(path)) {
+        destinationPath = path; RenderPage();               // an empty folder dropped in = install here
+      } else await Probe(path);
+    }
+
+    static bool DirectoryIsEmpty(string path) {
+      try { return !Directory.EnumerateFileSystemEntries(path).Any(); } catch { return false; }
+    }
+
+    void OnKeyDown(object sender, KeyEventArgs e) {
+      if (e.Key == Key.Escape) {
+        if (page == Page.Installing) CancelInstall();
+        else if (backButton.Visibility == Visibility.Visible) Back();
+        else Close();
+        e.Handled = true;
+      } else if (e.Key == Key.Enter && nextButton.Visibility == Visibility.Visible && nextButton.IsEnabled) {
+        nextButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); e.Handled = true;
+      }
+    }
+
+    // ------------------------------------------------------------------- text
+
+    string L(string ru, string en, string de, string fr, string it, string es) {
       if (selectedLanguage == 12) return ru;
-      Dictionary<string, string> catalog;
-      if (selectedLanguage == 2) return de ?? (TextCatalog.TryGetValue(2, out catalog) && catalog.ContainsKey(en) ? catalog[en] : en);
-      if (selectedLanguage == 3) return fr ?? (TextCatalog.TryGetValue(3, out catalog) && catalog.ContainsKey(en) ? catalog[en] : en);
-      if (selectedLanguage == 4) return it ?? (TextCatalog.TryGetValue(4, out catalog) && catalog.ContainsKey(en) ? catalog[en] : en);
-      if (selectedLanguage == 5) return es ?? (TextCatalog.TryGetValue(5, out catalog) && catalog.ContainsKey(en) ? catalog[en] : en);
+      if (selectedLanguage == 2) return de ?? en;
+      if (selectedLanguage == 3) return fr ?? en;
+      if (selectedLanguage == 4) return it ?? en;
+      if (selectedLanguage == 5) return es ?? en;
       return en;
     }
 
     string Phase(string value) {
-      string clean = value;
+      string clean = value ?? "";
       if (clean.StartsWith("Проверка источника ", StringComparison.Ordinal))
-        return L("Проверка источника", "Checking source", "Quelle wird geprüft", "Vérification de la source", "Verifica della sorgente", "Comprobando el origen") + clean.Substring("Проверка источника".Length);
-      if (clean == "Локальный payload") return L(clean, "Local payload", "Lokales Payload", "Payload local", "Payload locale", "Payload local");
-      if (clean == "Payload уже загружен") return L(clean, "Payload already downloaded", "Payload bereits geladen", "Payload déjà téléchargé", "Payload già scaricato", "Payload ya descargado");
-      if (clean == "Скачивание PC Edition") return L(clean, "Downloading PC Edition", "PC Edition wird geladen", "Téléchargement de la PC Edition", "Download della PC Edition", "Descargando PC Edition");
-      if (clean == "Распаковка payload") return L(clean, "Extracting payload", "Payload wird entpackt", "Extraction du payload", "Estrazione del payload", "Extrayendo el payload");
+        return L("Проверка источника", "Checking the source", "Quelle wird geprüft", "Vérification de la source",
+          "Verifica della sorgente", "Comprobando el origen") + clean.Substring("Проверка источника".Length);
+      if (clean == "Локальный payload") return L(clean, "Local files", "Lokale Dateien", "Fichiers locaux", "File locali", "Archivos locales");
+      if (clean == "Payload уже загружен") return L(clean, "Files already downloaded", "Dateien bereits geladen",
+        "Fichiers déjà téléchargés", "File già scaricati", "Archivos ya descargados");
+      if (clean == "Скачивание PC Edition") return L(clean, "Downloading the PC Edition", "PC Edition wird geladen",
+        "Téléchargement de la PC Edition", "Download della PC Edition", "Descargando la PC Edition");
+      if (clean == "Проверка архива") return L(clean, "Verifying the archive", "Archiv wird geprüft",
+        "Vérification de l’archive", "Verifica dell’archivio", "Verificando el archivo");
+      if (clean == "Распаковка payload") return L(clean, "Extracting the files", "Dateien werden entpackt",
+        "Extraction des fichiers", "Estrazione dei file", "Extrayendo los archivos");
       if (clean == "PC Edition") return clean;
-      if (clean == "Распаковка источника") return L(clean, "Extracting source", "Quelle wird entpackt", "Extraction de la source", "Estrazione della sorgente", "Extrayendo el origen");
+      if (clean == "Распаковка источника") return L(clean, "Extracting the source", "Quelle wird entpackt",
+        "Extraction de la source", "Estrazione della sorgente", "Extrayendo el origen");
       if (clean == "Original data") return L("Исходные данные", clean, "Originaldaten", "Données d’origine", "Dati originali", "Datos originales");
       if (clean == "Russian data") return L("Русские данные", clean, "Russische Daten", "Données russes", "Dati russi", "Datos rusos");
       if (clean == "Готово") return L(clean, "Complete", "Fertig", "Terminé", "Completato", "Completado");
@@ -753,7 +904,8 @@ namespace EotInstaller {
     }
 
     static string FormatBytes(long value) {
-      string[] units = { "Б", "КБ", "МБ", "ГБ", "ТБ" }; double size = Math.Max(0, value); int unit = 0;
+      if (value < 0) return "—";
+      string[] units = { "Б", "КБ", "МБ", "ГБ", "ТБ" }; double size = value; int unit = 0;
       while (size >= 1024 && unit < units.Length - 1) { size /= 1024; unit++; }
       return size.ToString(unit == 0 ? "0" : "0.00") + " " + units[unit];
     }

@@ -9,7 +9,7 @@ using System.Web.Script.Serialization;
 sealed class ManifestFile { public string Path; public long Size; public string Sha256; }
 sealed class PayloadManifest {
   public int Schema = 1;
-  public string Build = "Spider-Man Edge of Time PC V1 BETA GOLD 20260910";
+  public string Build = "Project 2099 V2 BETA 1 TEST (Edge of Time PC Edition) 20260921";
   public List<ManifestFile> Files = new List<ManifestFile>();
 }
 

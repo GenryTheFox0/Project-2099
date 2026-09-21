@@ -1,25 +1,24 @@
 <p align="center">
-  <img src="assets/eot-pc-edition-logo.png" width="900" alt="Spider-Man: Edge of Time — PC Edition">
+  <img src="assets/brand/project2099_logo_transparent_v2.png" width="900" alt="Project 2099: На грани времени">
 </p>
 
-<h1 align="center">Spider-Man: Edge of Time — PC Edition</h1>
-<p align="center"><strong>Two Eras. One Destiny.</strong></p>
+<h1 align="center">Project 2099: На грани времени</h1>
+<p align="center"><strong>Two eras. One impossible PC release.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases">Downloads</a> ·
+  <a href="https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases">Public downloads</a> ·
   <a href="#installation">Installation</a> ·
-  <a href="INSTALLATION.md">Installation guides</a> ·
-  <a href="POST_EOT_COLLAB_BETA3_EN.md">Development diary</a> ·
+  <a href="INSTALLATION.md">Six-language guides</a> ·
+  <a href="PROJECT_2099_V2_BETA1_TEST.md">V2 test build</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
-  <a href="https://www.patreon.com/cw/GenryTheFox">Patreon</a> ·
-  <a href="https://www.donationalerts.com/r/genrythefoxmax">DonationAlerts</a> ·
-  <a href="https://donatepay.ru/don/1411886">DonatePay</a>
+  <a href="https://discord.gg/vrCTtBgjt">Discord</a> ·
+  <a href="https://boosty.to/genrythefox">Boosty</a>
 </p>
 
-This is an unofficial Windows edition of **Spider-Man: Edge of Time (2011)**, powered by ReXGlue and rebuilt around the things a proper PC release actually needs.
+Project 2099 is an independent Windows recompilation project for **Spider-Man: Edge of Time (2011)**. It adapts the Xbox 360 version through ReXGlue and adds a PC layer built for this game: keyboard and mouse controls, a launcher, localization, local achievements, graphics repairs and mod support. The installation starts from a compatible copy that you provide.
 
-The game launched on Xbox 360, PlayStation 3, Wii, Nintendo DS and Nintendo 3DS. Windows never got a version. That pissed me off for years, so I finally did something about it.
+The public **V1 Beta 3** installer and the current **V2 BETA 1 TEST** development build are different stages. V2 is being tested and is not presented here as a finished public release. Read the [V2 test status](PROJECT_2099_V2_BETA1_TEST.md) for what is verified and what still needs work.
 
 ## What this is
 
@@ -33,22 +32,26 @@ This public repository contains the **standalone installer and its tools**. The 
 
 ## Version and release status
 
-**V1 Beta — installer version `v1.0.0-beta.3`.**
+**V2 BETA 1 — installer version `v2.0.0-beta.1`.** The previous public build was `v1.0.0-beta.3`.
 
-Beta 3 is an installer compatibility hotfix. It accepts the common USA/Europe Xbox 360 source directly as ISO or ZIP, finds a game root nested inside one or two outer folders, and keeps the existing Russian GOD path working. Users no longer have to unpack a ZIP or click through duplicate directory levels just to reach `Default.xex`.
+V2 attacks the two complaints that mattered most inside the runtime itself, not in a config file:
 
-![Beta 3 USA Europe ISO and ZIP source selection](assets/installer-beta3-source-usa-zip.png)
+- **A shader pipeline compiled on the spot no longer owns a frame.** The GPU command thread now waits at most a per-frame budget (6 ms by default) for a new D3D12 pipeline; past that the draw moves to the next frame while eight background workers finish building it. Before this, one heavy pipeline could cost a 300 ms frame.
+- **Checkpoint saves no longer freeze the game for 100 ms.** Deferred overlapped completions carried a fixed 100 ms sleep inherited from the emulator lineage, and this title waits on the result of its own save request. That delay is a setting now and defaults to 8 ms.
+- **The HDR surface-scaling compute pipeline is built at start-up** instead of lazily inside the first frame of a new scene.
+- **Texture detail at a distance** is a new graphics option (host mip LOD bias), alongside anisotropy up to 16x. Both belong to the sampler key, so a change applies on the next frame rather than after a return to the main menu.
+- **A new installer.** One setup screen instead of a nine-step march, drag and drop for an ISO/ZIP/folder, an offline path that needs no GitHub at all, a free-space check before the install starts and a failure page that says what to do next.
 
-I have completed the story from beginning to end on the development setup. Other hardware can still expose bugs, especially in rendering and frame pacing.
+Measured on the development machine (RTX 5060, 12 threads) after these changes: a 120 FPS target held with a median frame of 8.3 ms and p99 near 10 ms, zero in-frame pipeline builds across a session, and no 100 ms save hitch. Different hardware can still expose different problems.
 
-Download the build only from [GitHub Releases](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases). If the release page has no attached files, there is no public build yet. The online installer also needs the matching payload ZIP under the exact tag and filename it was built for.
+Download the build only from [GitHub Releases](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases). If the release page has no attached files, there is no public build yet.
 
 ### Known issues
 
-- Microstutter, particularly during some scene and level transitions.
-- Occasional **severe freezes**, including on powerful PCs.
+- Scene transitions and the first seconds of a cutscene can still fall below the target while the renderer creates that scene's set of render targets. It settles after the first pass through a scene.
 - White textures or white scene rendering on some Intel integrated graphics configurations. A tested rollback candidate did **not** resolve this issue and was withdrawn.
-- Remaining rendering inconsistencies and white elements in parts of the settings UI.
+- Internal resolution above native is experimental and still needs a restart to apply.
+- Vulkan is not usable yet; D3D12 is the supported path.
 - Audio breakup can still occur on weaker systems.
 - Experimental graphics add-ons can introduce hardware-specific problems.
 
@@ -240,12 +243,13 @@ The PC Edition is free. If it gave you a good evening and you want to help me ke
 - **[Patreon — support Edge of Time and future updates](https://www.patreon.com/cw/GenryTheFox)**
 - **[DonationAlerts](https://www.donationalerts.com/r/genrythefoxmax)**
 - **[DonatePay](https://donatepay.ru/don/1411886)**
+- **[Boosty](https://boosty.to/genrythefox)**
 
 Nothing is locked behind a donation. It is simply a way to support the person still sitting here and beating this old game into a proper Windows release.
 
 ## Telegram — Склад Генри
 
-**[Development updates, screenshots, videos and other projects](https://t.me/teamgenrythefox)**
+**[Telegram — development updates, screenshots and releases](https://t.me/teamgenrythefox)** · **[Discord — Project 2099 discussion and bug reports](https://discord.gg/vrCTtBgjt)**
 
 News, screenshots, videos, experiments, failures, victories and all the rest of my bullshit — straight from me.
 
