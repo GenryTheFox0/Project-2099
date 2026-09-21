@@ -1,7 +1,7 @@
 # Публикация Project 2099 V2 BETA 1 на GitHub
 
 Тег релиза: **`v2.0.0-beta.1`**
-Репозиторий: **`GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition`**
+Репозиторий: **`GenryTheFox0/Project-2099`**
 
 Готовые файлы лежат в `artifacts/release-v2.0.0-beta.1/`:
 

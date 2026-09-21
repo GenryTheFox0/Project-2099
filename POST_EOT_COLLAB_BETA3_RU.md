@@ -77,7 +77,7 @@ Beta 3 — это микропатч установщика. Он не меня�
 Этим и будет заниматься дальнейшая разработка. Параллельно начинаю разбирать материалы `reeot`, а им передаю свои наработки по PC-управлению, QTE, локализации, шрифтам, лаунчеру и другим пользовательским функциям.
 
 Мой проект:
-https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition
+https://github.com/GenryTheFox0/Project-2099
 
 EdgeOfTime-Recompiled / reeot:
 https://github.com/goliathret/reeot

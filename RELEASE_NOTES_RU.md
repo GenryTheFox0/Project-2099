@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/main/assets/eot-pc-edition-logo.png" width="900" alt="Spider-Man: Edge of Time — PC Edition">
+  <img src="https://raw.githubusercontent.com/GenryTheFox0/Project-2099/main/assets/brand/project2099_logo_transparent_v2.png" width="900" alt="Project 2099: На грани времени">
 </p>
 
 <h1 align="center">Project 2099: На грани времени</h1>
@@ -51,7 +51,7 @@ p99 около 10 мс, ноль сборок конвейеров в кадре
 > **Обновление beta.3:** исправлен главный проёб установщика с USA/Europe-источником. Теперь можно выбрать обычный Xbox 360 ISO, ZIP целиком или внешнюю папку `Spider-Man - Edge of Time (USA Europe)` — инсталлер сам найдёт вложенный корень с `Default.xex`. Русский GOD/`00007000` продолжает работать. Это микропатч установщика; графика, управление и сохранения самой PC Edition не откатывались.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/main/assets/installer-beta3-source-usa-zip.png" width="1100" alt="Beta 3 USA Europe ISO ZIP source selection">
+  <img src="https://raw.githubusercontent.com/GenryTheFox0/Project-2099/main/assets/installer-beta3-source-usa-zip.png" width="1100" alt="Beta 3 USA Europe ISO ZIP source selection">
 </p>
 
 У **Spider-Man: Edge of Time** никогда не было официальной версии для Windows. Игра вышла на Xbox 360, PlayStation 3, Wii, Nintendo DS и Nintendo 3DS, а PC снова остался смотреть на всё это через стекло.
@@ -66,7 +66,7 @@ p99 около 10 мс, ноль сборок конвейеров в кадре
 
 Для обычной установки скачайте только:
 
-### [СКАЧАТЬ EOTInstaller-v1.0.0-beta.3.exe](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/releases/download/v1.0.0-beta.3/EOTInstaller-v1.0.0-beta.3.exe)
+### [СКАЧАТЬ EOTInstaller-v1.0.0-beta.3.exe](https://github.com/GenryTheFox0/Project-2099/releases/download/v1.0.0-beta.3/EOTInstaller-v1.0.0-beta.3.exe)
 
 Инсталлер сам загрузит пакет PC Edition размером около 1,22 ГБ, продолжит оборванную загрузку и проверит его SHA-256. Вручную скачивать payload для обычной установки не требуется.
 
@@ -81,17 +81,17 @@ p99 около 10 мс, ноль сборок конвейеров в кадре
 
 ### Инструкции на всех языках игры
 
-[English](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/blob/main/INSTALL_EN.md) ·
-[Русский](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/blob/main/INSTALL_RU.md) ·
-[Deutsch](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/blob/main/INSTALL_DE.md) ·
-[Français](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/blob/main/INSTALL_FR.md) ·
-[Italiano](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/blob/main/INSTALL_IT.md) ·
-[Español](https://github.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/blob/main/INSTALL_ES.md)
+[English](https://github.com/GenryTheFox0/Project-2099/blob/main/INSTALL_EN.md) ·
+[Русский](https://github.com/GenryTheFox0/Project-2099/blob/main/INSTALL_RU.md) ·
+[Deutsch](https://github.com/GenryTheFox0/Project-2099/blob/main/INSTALL_DE.md) ·
+[Français](https://github.com/GenryTheFox0/Project-2099/blob/main/INSTALL_FR.md) ·
+[Italiano](https://github.com/GenryTheFox0/Project-2099/blob/main/INSTALL_IT.md) ·
+[Español](https://github.com/GenryTheFox0/Project-2099/blob/main/INSTALL_ES.md)
 
 Там есть обычная и offline-установка, правильная структура `payload`, поддерживаемые исходники, хеши, управление, кэш, сохранения и решение типовых ошибок.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/GenryTheFox/Spider-Man-Edge-of-Time-PC-Edition/main/assets/installer-preview-v1-beta-2.png" width="1100" alt="Spider-Man: Edge of Time PC Edition installer">
+  <img src="https://raw.githubusercontent.com/GenryTheFox0/Project-2099/main/assets/installer-preview-v1-beta-2.png" width="1100" alt="Spider-Man: Edge of Time PC Edition installer">
 </p>
 
 ## Что это за порт
