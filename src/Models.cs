@@ -35,6 +35,27 @@ namespace EotInstaller {
     public List<PatchFile> Files = new List<PatchFile>();
   }
 
+  // One step of work on one file: "a file with this sha256 becomes that one".
+  public sealed class PatchEntry {
+    public string Path;
+    public long SourceSize;
+    public string SourceSha256;
+    public long TargetSize;
+    public string TargetSha256;
+    public string Delta;
+    public long DeltaSize;
+    public string DeltaSha256;
+  }
+
+  // Everything the installer knows how to do, keyed by hash rather than by dump:
+  // English brings any known text file to the canonical English one, Russian
+  // turns that into the translation.
+  public sealed class PatchIndex {
+    public int Schema;
+    public List<PatchEntry> English = new List<PatchEntry>();
+    public List<PatchEntry> Russian = new List<PatchEntry>();
+  }
+
   public sealed class PayloadManifest {
     public int Schema;
     public string Build;

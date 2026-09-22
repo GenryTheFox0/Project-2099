@@ -1,7 +1,11 @@
-// Game-data-free checks that format recognition and donor revision checks remain distinct.
+// Game-data-free checks of what the installer accepts as a source.
+//
+// The contract changed: a dump is no longer required to be one of the recorded
+// revisions. What must still hold is that the thing pointed at really is this
+// game, and that a complete but unrecognised dump is accepted rather than
+// refused -- that refusal is what sent players hunting for "the right" ISO.
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using EotInstaller;
 
@@ -16,24 +20,34 @@ static class TestSourceMismatch {
     }
   }
 
+  static void Write(string path, long size) {
+    Directory.CreateDirectory(Path.GetDirectoryName(path));
+    using (var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+      file.SetLength(size); // Sparse zero-filled test data; never game data.
+  }
+
   static void Main() {
     string testRoot = Path.Combine(Path.GetTempPath(), "EOT-SourceProbe-" + Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(Path.Combine(testRoot, "Data"));
     try {
-      File.WriteAllBytes(Path.Combine(testRoot, "Default.xex"), new byte[] { 0 });
       var core = new InstallerCore();
-      ExpectProbeError(core, testRoot, "game root");
-      File.WriteAllBytes(Path.Combine(testRoot, "Data", "Main.pkz"), new byte[] { 0 });
-      ExpectProbeError(core, testRoot, "quick-check file names or sizes");
-      foreach (string path in core.Manifest.QuickChecks) {
-        var entry = core.Manifest.Files.First(file => String.Equals(file.Path, path, StringComparison.OrdinalIgnoreCase));
-        string output = Path.Combine(testRoot, path.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(output));
-        using (var file = new FileStream(output, FileMode.Create, FileAccess.Write, FileShare.None))
-          file.SetLength(entry.Size); // Sparse zero-filled test data; never game data.
-      }
-      ExpectProbeError(core, testRoot, "SHA-256 hashes differ");
-      Console.WriteLine("PASS: missing game root, unsupported sizes, and matching sizes with wrong SHA-256");
+
+      ExpectProbeError(core, testRoot, "игры нет");
+
+      Write(Path.Combine(testRoot, "Default.xex"), 1);
+      ExpectProbeError(core, testRoot, "не хватает Data/Main.pkz");
+
+      Write(Path.Combine(testRoot, "Data", "Main.pkz"), 1);
+      ExpectProbeError(core, testRoot, "не хватает Data/BaseGameplay.pkz");
+
+      Write(Path.Combine(testRoot, "Data", "BaseGameplay.pkz"), 1);
+      SourceProbe probe = core.ProbeAsync(testRoot, null, CancellationToken.None).GetAwaiter().GetResult();
+      if (probe.ManifestId != "unknown-revision")
+        throw new Exception("An unrecorded dump should probe as an unknown revision, got: " + probe.ManifestId);
+      if (probe.FilesFound != 3)
+        throw new Exception("Expected the three files that were written, got: " + probe.FilesFound);
+
+      Console.WriteLine("PASS: game root required, missing parts named, unknown revision accepted");
     } finally {
       Directory.Delete(testRoot, true);
     }

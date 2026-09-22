@@ -20,6 +20,7 @@ namespace EotInstaller {
     bool Exists(string relativePath);
     long GetLength(string relativePath);
     Stream OpenRead(string relativePath);
+    IEnumerable<string> EnumerateFiles();
   }
 
   sealed class DirectoryGameSource : IGameSource {
@@ -45,6 +46,10 @@ namespace EotInstaller {
       return new FileStream(Resolve(relativePath), FileMode.Open, FileAccess.Read, FileShare.Read,
         1024 * 1024, FileOptions.SequentialScan);
     }
+    public IEnumerable<string> EnumerateFiles() {
+      foreach (string file in Directory.GetFiles(root, "*", SearchOption.AllDirectories))
+        yield return file.Substring(rootPrefix.Length).Replace(Path.DirectorySeparatorChar, '/');
+    }
     public void Dispose() { }
   }
 
@@ -56,6 +61,9 @@ namespace EotInstaller {
     public bool Exists(string relativePath) { return image.Exists(relativePath); }
     public long GetLength(string relativePath) { return image.GetLength(relativePath); }
     public Stream OpenRead(string relativePath) { return image.OpenRead(relativePath); }
+    public IEnumerable<string> EnumerateFiles() {
+      foreach (var entry in image.Entries) yield return entry.Path;
+    }
     public void Dispose() { image.Dispose(); }
   }
 
@@ -67,6 +75,9 @@ namespace EotInstaller {
     public bool Exists(string relativePath) { return image.Exists(relativePath); }
     public long GetLength(string relativePath) { return image.GetLength(relativePath); }
     public Stream OpenRead(string relativePath) { return image.OpenRead(relativePath); }
+    public IEnumerable<string> EnumerateFiles() {
+      foreach (var entry in image.Entries) yield return entry.Path;
+    }
     public void Dispose() { image.Dispose(); }
   }
 
@@ -143,6 +154,7 @@ namespace EotInstaller {
         throw new FileNotFoundException("File not present in ZIP", relativePath);
       return entry.Open();
     }
+    public IEnumerable<string> EnumerateFiles() { return entries.Keys; }
     public void Dispose() { archive.Dispose(); stream.Dispose(); }
   }
 
@@ -150,7 +162,9 @@ namespace EotInstaller {
     static readonly string[] EmbeddedManifests = {
       "EOT.source-manifest.eu.json",
       "EOT.source-manifest.ru-god.json",
-      "EOT.source-manifest.usa-europe.json"
+      "EOT.source-manifest.usa-europe.json",
+      "EOT.source-manifest.usa-europe-r2.json",
+      "EOT.source-manifest.sazanoff.json"
     };
     const int BufferSize = 1024 * 1024;
     readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue, RecursionLimit = 32 };
@@ -169,6 +183,87 @@ namespace EotInstaller {
     }
 
     public GameManifest Manifest { get { return gameManifests[0]; } }
+
+    // What the last install actually managed, for the page that reports it.
+    public int LastTranslatedFiles;
+    public int LastExpectedTranslatedFiles;
+    public List<string> LastUntranslatedFiles = new List<string>();
+    public List<string> LastSourceDeviations = new List<string>();
+    public string LastRevisionName;
+
+    static readonly string[] RequiredFiles = { "Default.xex", "Data/Main.pkz", "Data/BaseGameplay.pkz" };
+    Dictionary<string, PatchEntry> englishPatches;
+    Dictionary<string, PatchEntry> russianPatches;
+
+#if EOT_INSTALLER_TEST
+    // Answers "how far is this dump from each donor revision we know", which is the
+    // question behind every "Source hash mismatch" report. Each file is read once and
+    // compared against every manifest, so a 7 GB image costs one pass.
+    // Writes every file the manifests know about into a plain folder, so a new donor
+    // revision can be turned into a manifest and a delta set with the ordinary tools.
+    public void ExtractKnownFiles(string sourcePath, string targetRoot, TextWriter writer) {
+      using (IGameSource source = OpenSource(sourcePath)) {
+        var paths = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (GameManifest manifest in gameManifests)
+          foreach (ManifestFile file in manifest.Files)
+            if (seen.Add(file.Path)) paths.Add(file.Path);
+        paths.Sort(StringComparer.OrdinalIgnoreCase);
+        Directory.CreateDirectory(targetRoot);
+        int written = 0;
+        foreach (string path in paths) {
+          if (!source.Exists(path)) { writer.WriteLine("ABSENT\t" + path); continue; }
+          string output = SafeJoin(targetRoot, path);
+          Directory.CreateDirectory(Path.GetDirectoryName(output));
+          using (Stream input = source.OpenRead(path))
+          using (var file = new FileStream(output, FileMode.Create, FileAccess.Write, FileShare.None,
+            BufferSize, FileOptions.SequentialScan)) input.CopyTo(file, BufferSize);
+          written++;
+        }
+        writer.WriteLine("WROTE\t" + written + " of " + paths.Count);
+      }
+    }
+
+    public void ReportSourceDifferences(string sourcePath, TextWriter writer) {
+      using (IGameSource source = OpenSource(sourcePath)) {
+        writer.WriteLine("SOURCE\t" + source.Kind + "\t" + source.Name);
+        var paths = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (GameManifest manifest in gameManifests)
+          foreach (ManifestFile file in manifest.Files)
+            if (seen.Add(file.Path)) paths.Add(file.Path);
+        paths.Sort(StringComparer.OrdinalIgnoreCase);
+
+        var sizes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in paths) {
+          if (!source.Exists(path)) continue;
+          long length = source.GetLength(path);
+          sizes[path] = length;
+          using (Stream input = source.OpenRead(path))
+            hashes[path] = HashStream(input, length, CancellationToken.None, null);
+        }
+        writer.WriteLine("READ\t" + hashes.Count + " of " + paths.Count + " known paths");
+
+        foreach (GameManifest manifest in gameManifests) {
+          var missing = new List<string>();
+          var differing = new List<ManifestFile>();
+          foreach (ManifestFile file in manifest.Files.OrderBy(value => value.Path, StringComparer.OrdinalIgnoreCase)) {
+            if (!hashes.ContainsKey(file.Path)) { missing.Add(file.Path); continue; }
+            if (sizes[file.Path] != file.Size || !SameHash(hashes[file.Path], file.Sha256)) differing.Add(file);
+          }
+          writer.WriteLine("MANIFEST\t" + manifest.Id + "\tfiles=" + manifest.Files.Count +
+            "\tmissing=" + missing.Count + "\tdiffers=" + differing.Count);
+          foreach (string path in missing) writer.WriteLine("  MISSING\t" + path);
+          foreach (ManifestFile file in differing)
+            writer.WriteLine("  DIFFERS\t" + file.Path + "\tsize " + file.Size + " -> " + sizes[file.Path] +
+              "\t" + file.Sha256.ToLowerInvariant() + " -> " + hashes[file.Path].ToLowerInvariant());
+        }
+        foreach (string path in paths)
+          if (!hashes.ContainsKey(path)) writer.WriteLine("ABSENT\t" + path);
+      }
+    }
+#endif
 
     T LoadEmbedded<T>(string name) {
       using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(name)) {
@@ -313,48 +408,58 @@ namespace EotInstaller {
       CancellationToken cancellation) {
       return Task.Run(() => {
         using (IGameSource source = OpenSource(sourcePath)) {
-          GameManifest selected = IdentifySource(source, progress, cancellation);
+          List<ManifestFile> files = CollectSourceFiles(source);
+          GameManifest revision = RecogniseRevision(files, source, cancellation);
           return new SourceProbe {
-            ManifestId = selected.Id,
+            ManifestId = revision == null ? "unknown-revision" : revision.Id,
             Kind = source.Kind,
             DisplayName = source.Name,
-            Region = selected.Region,
-            FilesFound = selected.Files.Count,
-            RequiredBytes = selected.Files.Sum(file => file.Size)
+            Region = revision == null ? "unknown revision" : revision.Region,
+            FilesFound = files.Count,
+            RequiredBytes = files.Sum(file => file.Size)
           };
         }
       }, cancellation);
     }
 
-    GameManifest IdentifySource(IGameSource source, Action<InstallProgress> progress,
-      CancellationToken cancellation) {
-      bool matchingQuickCheckSizes = false;
-      bool quickCheckHashMismatch = false;
+    // What the dump actually is, as opposed to which revision we hoped for. The
+    // installer no longer refuses a dump it does not recognise: a file it knows
+    // gets the translation, anything else is the player's own game and is kept.
+    List<ManifestFile> CollectSourceFiles(IGameSource source) {
+      var files = new List<ManifestFile>();
+      foreach (string raw in source.EnumerateFiles()) {
+        string path = NormalizeRelative(raw);
+        if (path.StartsWith("$SystemUpdate/", StringComparison.OrdinalIgnoreCase)) continue;
+        if (SamePath(path, "nxeart")) continue;
+        long length = source.GetLength(path);
+        if (length < 0) continue;
+        files.Add(new ManifestFile { Path = path, Size = length, Sha256 = null });
+      }
+      files.Sort((left, right) => String.Compare(left.Path, right.Path, StringComparison.OrdinalIgnoreCase));
+      foreach (string required in RequiredFiles)
+        if (!files.Any(file => SamePath(file.Path, required)))
+          throw new InvalidDataException(
+            "Игра в источнике найдена не полностью: не хватает " + required +
+            ". Это не Spider-Man: Edge of Time или образ распакован не целиком");
+      return files;
+    }
+
+    // A known revision only changes what we call the dump on screen.
+    GameManifest RecogniseRevision(List<ManifestFile> files, IGameSource source, CancellationToken cancellation) {
       foreach (GameManifest manifest in gameManifests) {
-        var checks = manifest.QuickChecks.Select(path => manifest.Files.FirstOrDefault(file =>
-          String.Equals(file.Path, path, StringComparison.OrdinalIgnoreCase))).ToArray();
-        if (checks.Any(file => file == null)) throw new InvalidDataException("Quick-check manifest is inconsistent: " + manifest.Id);
-        if (checks.Any(file => !source.Exists(file.Path) || source.GetLength(file.Path) != file.Size)) continue;
-        matchingQuickCheckSizes = true;
-        long completed = 0, total = checks.Sum(file => file.Size); bool matches = true;
-        foreach (ManifestFile file in checks) {
+        bool matches = true;
+        foreach (string quick in manifest.QuickChecks) {
+          ManifestFile expected = manifest.Files.FirstOrDefault(file => SamePath(file.Path, quick));
+          ManifestFile actual = files.FirstOrDefault(file => SamePath(file.Path, quick));
+          if (expected == null || actual == null || actual.Size != expected.Size) { matches = false; break; }
           cancellation.ThrowIfCancellationRequested();
           string hash;
-          using (Stream input = source.OpenRead(file.Path))
-            hash = HashStream(input, file.Size, cancellation, bytes => {
-              completed += bytes; Report(progress, "Проверка источника " + manifest.Id, file.Path, completed, total);
-            });
-          if (!SameHash(hash, file.Sha256)) { matches = false; quickCheckHashMismatch = true; break; }
+          using (Stream input = source.OpenRead(actual.Path)) hash = HashStream(input, actual.Size, cancellation, null);
+          if (!SameHash(hash, expected.Sha256)) { matches = false; break; }
         }
         if (matches) return manifest;
       }
-      if (!source.Exists("Default.xex") || !source.Exists("Data/Main.pkz"))
-        throw new InvalidDataException("Source container opened, but the Edge of Time game root (Default.xex and Data/Main.pkz) was not found. Check the selected game/partition; this is not an ISO format failure.");
-      if (quickCheckHashMismatch)
-        throw new InvalidDataException("Source container and game layout opened, and quick-check sizes matched, but SHA-256 hashes differ from every supported donor revision. It may be another region, title update, modified copy or damaged data; the cause cannot be identified from this check alone.");
-      if (!matchingQuickCheckSizes)
-        throw new InvalidDataException("Source container and Edge of Time game root opened, but quick-check file names or sizes do not match any supported donor revision. Check edition/region/title update and source completeness; this is not an ISO format failure.");
-      throw new InvalidDataException("Source revision did not match any supported donor manifest.");
+      return null;
     }
 
     public Task InstallAsync(string sourcePath, string destination, string payloadRoot, int selectedLanguage,
@@ -379,18 +484,15 @@ namespace EotInstaller {
       string patchesRoot = Path.Combine(payloadRoot, "patches");
       PayloadManifest payload = LoadJson<PayloadManifest>(payloadManifestPath);
       ValidatePayloadManifest(payload);
+      PatchIndex index = LoadJson<PatchIndex>(Path.Combine(patchesRoot, "index.json"));
+      ValidatePatchIndex(index, patchesRoot);
       using (IGameSource source = OpenSource(sourcePath)) {
-        GameManifest sourceManifest = IdentifySource(source, progress, cancellation);
-        string variantRoot = Path.Combine(patchesRoot, sourceManifest.Id);
-        PatchManifest originalPatches = LoadJson<PatchManifest>(Path.Combine(variantRoot, "original.json"));
-        PatchManifest russianPatches = LoadJson<PatchManifest>(Path.Combine(variantRoot, "russian.json"));
-        ValidatePatchManifest(originalPatches, sourceManifest);
-        ValidatePatchManifest(russianPatches, sourceManifest);
-        long sourceBytes = sourceManifest.Files.Sum(file => file.Size);
-        long originalBytes = TargetTreeBytes(sourceManifest, originalPatches);
-        long russianBytes = TargetTreeBytes(sourceManifest, russianPatches);
-        long total = payload.Files.Sum(file => file.Size) + sourceBytes + originalBytes + russianBytes;
+        List<ManifestFile> files = CollectSourceFiles(source);
+        GameManifest revision = RecogniseRevision(files, source, cancellation);
+        long sourceBytes = files.Sum(file => file.Size);
+        long total = payload.Files.Sum(file => file.Size) + sourceBytes * 3;
         long completed = 0;
+        var applied = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         try {
           Directory.CreateDirectory(stage);
           foreach (ManifestFile file in payload.Files.OrderBy(file => file.Path, StringComparer.OrdinalIgnoreCase)) {
@@ -406,39 +508,42 @@ namespace EotInstaller {
           }
 
           string donorRoot = Path.Combine(stage, ".source");
-          foreach (ManifestFile file in sourceManifest.Files.OrderBy(file => file.Path, StringComparer.OrdinalIgnoreCase)) {
+          foreach (ManifestFile file in files) {
             cancellation.ThrowIfCancellationRequested();
-            if (!source.Exists(file.Path) || source.GetLength(file.Path) != file.Size)
-              throw new InvalidDataException("Source file missing or wrong size: " + file.Path);
             string output = SafeJoin(donorRoot, file.Path);
             Directory.CreateDirectory(Path.GetDirectoryName(output));
-            string hash;
             using (Stream input = source.OpenRead(file.Path))
             using (var targetStream = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None,
               BufferSize, FileOptions.SequentialScan)) {
-              hash = CopyStreamWithHash(input, targetStream, file.Size, cancellation, bytes => {
+              file.Sha256 = CopyStreamWithHash(input, targetStream, file.Size, cancellation, bytes => {
                 completed += bytes; Report(progress, "Распаковка источника", file.Path, completed, total);
               });
             }
-            if (!SameHash(hash, file.Sha256)) throw new InvalidDataException("Source hash mismatch: " + file.Path);
           }
 
-          BuildLanguageTree("Original", sourceManifest, originalPatches, donorRoot,
-            Path.Combine(stage, "Data", "Original"), variantRoot, progress, cancellation, ref completed, total);
-          BuildLanguageTree("Russian", sourceManifest, russianPatches, donorRoot,
-            Path.Combine(stage, "Data", "Russian"), variantRoot, progress, cancellation, ref completed, total);
-          VerifyLanguageTree("Original", sourceManifest, originalPatches,
-            Path.Combine(stage, "Data", "Original"), cancellation);
-          VerifyLanguageTree("Russian", sourceManifest, russianPatches,
-            Path.Combine(stage, "Data", "Russian"), cancellation);
+          var englishOriginal = new List<string>();
+          var englishRussian = new List<string>();
+          BuildTree("Original", files, index, donorRoot, Path.Combine(stage, "Data", "Original"),
+            patchesRoot, false, englishOriginal, progress, cancellation, ref completed, total);
+          applied["Original"] = englishOriginal;
+          applied["Russian"] = BuildTree("Russian", files, index, donorRoot, Path.Combine(stage, "Data", "Russian"),
+            patchesRoot, true, englishRussian, progress, cancellation, ref completed, total);
           Directory.Delete(donorRoot, true);
           ApplyDefaultLanguage(stage, selectedLanguage);
-          WriteReceipt(stage, source, sourceManifest, payload, originalPatches, russianPatches, selectedLanguage);
+          WriteReceipt(stage, source, files, revision, payload, index, applied, selectedLanguage);
 
           cancellation.ThrowIfCancellationRequested();
           if (Directory.Exists(target)) Directory.Delete(target, false);
           Directory.Move(stage, target);
           WriteLauncherFirstRunLanguage(selectedLanguage);
+          LastTranslatedFiles = applied["Russian"].Count;
+          LastExpectedTranslatedFiles = index.Russian.Select(entry => entry.Path)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Count();
+          LastUntranslatedFiles = index.Russian.Select(entry => NormalizeRelative(entry.Path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(path => !applied["Russian"].Any(done => SamePath(done, path)))
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList();
+          LastRevisionName = revision == null ? null : revision.Region;
           Report(progress, "Готово", "Launcher.exe", total, total);
         } catch {
           try { if (Directory.Exists(stage)) Directory.Delete(stage, true); } catch { }
@@ -447,61 +552,64 @@ namespace EotInstaller {
       }
     }
 
-    static long TargetTreeBytes(GameManifest source, PatchManifest patches) {
-      return source.Files.Sum(file => {
-        PatchFile patch = patches.Files.FirstOrDefault(value => SamePath(value.Path, file.Path));
-        return patch == null ? file.Size : patch.TargetSize;
-      });
-    }
-
-    void BuildLanguageTree(string language, GameManifest sourceManifest, PatchManifest patches,
-      string donorRoot, string targetRoot, string patchesRoot, Action<InstallProgress> progress,
-      CancellationToken cancellation, ref long completed, long total) {
-      var patchMap = patches.Files.ToDictionary(value => NormalizeRelative(value.Path), StringComparer.OrdinalIgnoreCase);
-      foreach (ManifestFile file in sourceManifest.Files.OrderBy(value => value.Path, StringComparer.OrdinalIgnoreCase)) {
+    // One file, two possible steps: bring its text to the canonical English, then
+    // -- for the Russian tree -- apply the translation. A file nobody has a patch
+    // for is the player's own and is linked through untouched.
+    List<string> BuildTree(string language, List<ManifestFile> files, PatchIndex index, string donorRoot,
+      string targetRoot, string patchesRoot, bool translate, List<string> englishApplied,
+      Action<InstallProgress> progress, CancellationToken cancellation, ref long completed, long total) {
+      var translated = new List<string>();
+      foreach (ManifestFile file in files) {
         cancellation.ThrowIfCancellationRequested();
         string donor = SafeJoin(donorRoot, file.Path);
         string output = SafeJoin(targetRoot, file.Path);
         Directory.CreateDirectory(Path.GetDirectoryName(output));
-        PatchFile patch;
-        if (patchMap.TryGetValue(file.Path, out patch)) {
-          string delta = SafeJoin(patchesRoot, patch.Delta);
-          if (!File.Exists(delta) || new FileInfo(delta).Length != patch.DeltaSize ||
-              !SameHash(HashFile(delta, cancellation), patch.DeltaSha256))
-            throw new InvalidDataException("Delta is missing or corrupted: " + patch.Delta);
-          string temporary = output + ".tmp";
-          EotpPatch.Apply(donor, delta, temporary);
-          if (new FileInfo(temporary).Length != patch.TargetSize ||
-              !SameHash(HashFile(temporary, cancellation), patch.TargetSha256))
-            throw new InvalidDataException(language + " patch verification failed: " + file.Path);
-          File.Move(temporary, output);
-          completed += patch.TargetSize;
+        string current = donor;
+        string hash = file.Sha256;
+        string intermediate = null;
+
+        PatchEntry english = FindPatch(englishPatches, file.Path, hash);
+        if (english != null) {
+          intermediate = output + ".english";
+          ApplyPatch(english, current, intermediate, patchesRoot, cancellation);
+          current = intermediate;
+          hash = english.TargetSha256;
+          englishApplied.Add(file.Path);
+        }
+
+        PatchEntry russian = translate ? FindPatch(russianPatches, file.Path, hash) : null;
+        if (russian != null) {
+          string produced = output + ".russian";
+          ApplyPatch(russian, current, produced, patchesRoot, cancellation);
+          if (intermediate != null) File.Delete(intermediate);
+          File.Move(produced, output);
+          translated.Add(file.Path);
+          completed += russian.TargetSize;
+        } else if (intermediate != null) {
+          File.Move(intermediate, output);
+          completed += english.TargetSize;
         } else {
           if (!CreateHardLink(output, donor, IntPtr.Zero)) File.Copy(donor, output, false);
           completed += file.Size;
         }
         Report(progress, language + " data", file.Path, completed, total);
       }
-    }
-
-    void VerifyLanguageTree(string language, GameManifest sourceManifest, PatchManifest patches,
-      string targetRoot, CancellationToken cancellation) {
-      var patchMap = patches.Files.ToDictionary(value => NormalizeRelative(value.Path), StringComparer.OrdinalIgnoreCase);
-      foreach (ManifestFile source in sourceManifest.Files) {
-        cancellation.ThrowIfCancellationRequested();
-        PatchFile patch;
-        bool modified = patchMap.TryGetValue(source.Path, out patch);
-        long expectedSize = modified ? patch.TargetSize : source.Size;
-        string expectedHash = modified ? patch.TargetSha256 : source.Sha256;
-        string path = SafeJoin(targetRoot, source.Path);
-        if (!File.Exists(path) || new FileInfo(path).Length != expectedSize ||
-            !SameHash(HashFile(path, cancellation), expectedHash))
-          throw new InvalidDataException(language + " data verification failed: " + source.Path);
-      }
-      foreach (string required in new[] { "Default.xex", "Data/Main.pkz", "Data/BaseGameplay.pkz" }) {
+      foreach (string required in RequiredFiles)
         if (!File.Exists(SafeJoin(targetRoot, required)))
           throw new InvalidDataException(language + " data is incomplete: " + required);
-      }
+      return translated;
+    }
+
+    void ApplyPatch(PatchEntry entry, string source, string output, string patchesRoot, CancellationToken cancellation) {
+      string delta = SafeJoin(patchesRoot, entry.Delta);
+      if (!File.Exists(delta) || new FileInfo(delta).Length != entry.DeltaSize ||
+          !SameHash(HashFile(delta, cancellation), entry.DeltaSha256))
+        throw new InvalidDataException("Delta is missing or corrupted: " + entry.Delta);
+      if (File.Exists(output)) File.Delete(output);
+      EotpPatch.Apply(source, delta, output);
+      if (new FileInfo(output).Length != entry.TargetSize ||
+          !SameHash(HashFile(output, cancellation), entry.TargetSha256))
+        throw new InvalidDataException("Patch verification failed: " + entry.Path);
     }
 
     void ValidatePayloadManifest(PayloadManifest manifest) {
@@ -518,37 +626,70 @@ namespace EotInstaller {
           throw new InvalidDataException("Payload is missing " + required);
     }
 
-    void ValidatePatchManifest(PatchManifest manifest, GameManifest sourceManifest) {
-      if (manifest == null || manifest.Schema != 1 || manifest.Files == null)
-        throw new InvalidDataException("Invalid Russian patch manifest");
-      var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-      foreach (PatchFile patch in manifest.Files) {
-        patch.Path = NormalizeRelative(patch.Path);
-        patch.Delta = NormalizeRelative(patch.Delta);
-        ManifestFile source = sourceManifest.Files.FirstOrDefault(file => SamePath(file.Path, patch.Path));
-        if (source == null || !seen.Add(patch.Path) || patch.SourceSize != source.Size ||
-            !SameHash(patch.SourceSha256, source.Sha256) || patch.TargetSize < 0 || patch.DeltaSize <= 0 ||
-            !IsSha256(patch.TargetSha256) || !IsSha256(patch.DeltaSha256))
-          throw new InvalidDataException("Invalid Russian patch entry: " + patch.Path);
-      }
+    // The index is the whole knowledge of what can be translated: a file with a
+    // given sha256 becomes a given other file. It is keyed by hash, not by dump,
+    // which is what lets an unknown revision install.
+    void ValidatePatchIndex(PatchIndex index, string patchesRoot) {
+      if (index == null || index.Schema != 3 || index.English == null || index.Russian == null)
+        throw new InvalidDataException("Invalid patch index");
+      englishPatches = BuildPatchLookup(index.English, "English");
+      russianPatches = BuildPatchLookup(index.Russian, "Russian");
+      if (russianPatches.Count == 0) throw new InvalidDataException("Patch index carries no translation");
     }
 
-    void WriteReceipt(string stage, IGameSource source, GameManifest sourceManifest, PayloadManifest payload,
-      PatchManifest originalPatches, PatchManifest russianPatches, int selectedLanguage) {
+    Dictionary<string, PatchEntry> BuildPatchLookup(List<PatchEntry> entries, string stage) {
+      var lookup = new Dictionary<string, PatchEntry>(StringComparer.OrdinalIgnoreCase);
+      foreach (PatchEntry entry in entries) {
+        entry.Path = NormalizeRelative(entry.Path);
+        entry.Delta = NormalizeRelative(entry.Delta);
+        if (entry.SourceSize < 0 || entry.TargetSize < 0 || entry.DeltaSize <= 0 ||
+            !IsSha256(entry.SourceSha256) || !IsSha256(entry.TargetSha256) || !IsSha256(entry.DeltaSha256))
+          throw new InvalidDataException("Invalid " + stage + " patch entry: " + entry.Path);
+        string key = PatchKey(entry.Path, entry.SourceSha256);
+        if (lookup.ContainsKey(key))
+          throw new InvalidDataException("Duplicate " + stage + " patch entry: " + entry.Path);
+        lookup.Add(key, entry);
+      }
+      return lookup;
+    }
+
+    static string PatchKey(string path, string hash) {
+      return NormalizeRelative(path).ToLowerInvariant() + "|" + hash.ToLowerInvariant();
+    }
+
+    static PatchEntry FindPatch(Dictionary<string, PatchEntry> lookup, string path, string hash) {
+      PatchEntry entry;
+      return lookup != null && hash != null && lookup.TryGetValue(PatchKey(path, hash), out entry) ? entry : null;
+    }
+
+    void WriteReceipt(string stage, IGameSource source, List<ManifestFile> files, GameManifest revision,
+      PayloadManifest payload, PatchIndex index, Dictionary<string, List<string>> applied, int selectedLanguage) {
       string directory = Path.Combine(stage, "Support", "Install");
       Directory.CreateDirectory(directory);
+      var deviations = new List<string>();
+      if (revision != null) {
+        foreach (ManifestFile file in files) {
+          ManifestFile known = revision.Files.FirstOrDefault(value => SamePath(value.Path, file.Path));
+          if (known != null && (known.Size != file.Size || !SameHash(known.Sha256, file.Sha256)))
+            deviations.Add(file.Path);
+        }
+      }
+      LastSourceDeviations = deviations;
       string text = json.Serialize(new {
-        Schema = 1,
+        Schema = 2,
         InstalledUtc = DateTime.UtcNow.ToString("o"),
         SourceKind = source.Kind,
         SourceName = source.Name,
-        SourceManifest = sourceManifest.Id,
-        TitleId = sourceManifest.TitleId,
-        Region = sourceManifest.Region,
+        Revision = revision == null ? "unknown-revision" : revision.Id,
+        RevisionName = revision == null ? null : revision.Region,
         PortBuild = payload.Build,
-        SourceFiles = sourceManifest.Files.Count,
-        OriginalDeltas = originalPatches.Files.Count,
-        RussianDeltas = russianPatches.Files.Count,
+        SourceFiles = files.Count,
+        SourceBytes = files.Sum(file => file.Size),
+        EnglishPatchesApplied = applied["Original"].Count,
+        TranslatedFiles = applied["Russian"].OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
+        TranslatableFiles = index.Russian.Select(entry => entry.Path)
+          .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
+        SourceDeviations = deviations.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
         DefaultLanguage = selectedLanguage
       });
       File.WriteAllText(Path.Combine(directory, "INSTALL_RECEIPT.json"), text, new UTF8Encoding(false));

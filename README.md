@@ -155,27 +155,41 @@ For the normal online installation, download only `EOTInstaller-v1.0.0-beta.3.ex
 
 Installation guides: [English](INSTALL_EN.md) · [Русский](INSTALL_RU.md) · [Deutsch](INSTALL_DE.md) · [Français](INSTALL_FR.md) · [Italiano](INSTALL_IT.md) · [Español](INSTALL_ES.md)
 
-The intended input formats are USA/Europe XDVDFS ISO, a ZIP containing the game root, an extracted folder containing `Default.xex` and `Data`, an outer folder containing one compatible game root, and supported GOD/SVOD containers. A GOD source can also be selected through its `415608B2/00007000` folder. If a selected directory contains one ISO or ZIP, the installer can open it automatically.
+The input can be an XDVDFS ISO, a ZIP containing the game root, an extracted folder containing `Default.xex` and `Data`, an outer folder containing one compatible game root, or a GOD/SVOD container. A GOD image may be selected at any level a player is likely to click: the outer folder, the title-id folder, `00007000`, the container file itself or its `.data` directory. If a selected directory contains one ISO or ZIP, the installer opens it automatically.
 
 After a successful installation, the source ISO, GOD or extracted folder is no longer needed. The PC Edition runs entirely from the chosen destination and is not tied to the source drive letter. Saves and installer caches use the current Windows user's profile rather than a developer-specific path.
 
 **A container extension or header alone is not enough.** The current reader handles SVOD/GOD; it does not support every STFS package that happens to start with LIVE, PIRS or CON.
 
-**Supported donor revisions**
+**Which dumps work**
 
-The installer recognizes three recorded file sets:
+Any dump of this game that carries `Default.xex`, `Data/Main.pkz` and `Data/BaseGameplay.pkz`.
+Revisions of this title differ mostly in level packages, and one revision's level is the same
+level, so those files are carried across from the player's own copy untouched.
 
-- `usa-europe-retail`: the common unmodified USA/Europe Xbox 360 disc layout used by public ISO/ZIP copies.
-- `eu-retail`: the older PC Edition original-language baseline retained for compatibility.
-- `ru-god-alt`: the tested alternate Russian LIVE/XSF GOD.
+The translation lives in thirteen files, and those are the only ones the installer cares
+about. It matches each file by SHA-256 against an index: a text file it knows receives the
+Russian text, one it does not know stays as it is. A retail dump nobody has seen before
+therefore installs without any update to the program.
 
-Unknown or mixed revisions are rejected. ISO parsing is implemented; the recorded full installation test used the supplied GOD, not a separately verified retail ISO.
+Recorded revisions, named on screen when they match:
+
+- `usa-europe-retail` and `usa-europe-retail-r2`: two USA/Europe retail revisions.
+- `eu-retail`: the PC Edition original-language baseline.
+- `ru-god-alt`: an alternate Russian LIVE/XSF GOD carrying a machine translation.
+- `sazanoff-rus-god`: Region Free RUS GOD (SazanOFF v1.0b).
+
+The last two are already translated by someone else. Their text is first returned to the
+canonical English and only then translated, so nothing of the foreign localisation survives.
+
+A dump whose text matches nothing known still installs; the final screen says how many of
+the thirteen files received the translation and names the ones that did not.
 
 **Verification and recovery**
 
 The installer verifies source-file hashes, stages the build in a temporary directory, checks the final output, resumes interrupted downloads through HTTP Range requests, reuses valid cached payloads and blocks unsafe ZIP paths. Only a fully verified installation is moved into the chosen destination.
 
-Local checks included a complete GOD extraction, reconstruction of both language trees and **293 matching files in each tree**. A local SSD run completed installation in approximately **34 seconds**, excluding the Internet download. That is a measurement on the development machine, not a universal installation-time promise.
+Local checks included full installations from an XDVDFS ISO, two GOD containers and an extracted folder, each reconstructing both language trees with **293 files in each tree** and the translation reaching **13 of 13** text files. A local SSD run completed installation in approximately **34 seconds**, excluding the Internet download. That is a measurement on the development machine, not a universal installation-time promise.
 
 **What the release contains**
 

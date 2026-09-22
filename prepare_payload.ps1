@@ -3,7 +3,9 @@ param(
   [Parameter(Mandatory=$true)][string]$OriginalRoot,
   [Parameter(Mandatory=$true)][string]$RussianRoot,
   [Parameter(Mandatory=$true)][string]$AlternateGodRoot,
-  [Parameter(Mandatory=$true)][string]$UsaEuropeRoot
+  [Parameter(Mandatory=$true)][string]$UsaEuropeRoot,
+  [Parameter(Mandatory=$true)][string]$UsaEuropeR2Root,
+  [Parameter(Mandatory=$true)][string]$SazanOffRoot
 )
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
@@ -12,22 +14,29 @@ $original=[IO.Path]::GetFullPath($OriginalRoot)
 $russian=[IO.Path]::GetFullPath($RussianRoot)
 $alternate=[IO.Path]::GetFullPath($AlternateGodRoot)
 $usa=[IO.Path]::GetFullPath($UsaEuropeRoot)
+$usaR2=[IO.Path]::GetFullPath($UsaEuropeR2Root)
+$sazan=[IO.Path]::GetFullPath($SazanOffRoot)
 $payload=Join-Path $root 'payload'
 $port=Join-Path $payload 'port'
 $patches=Join-Path $payload 'patches'
+$sets=Join-Path $root 'patchsets'
 $euManifest=Join-Path $root 'manifests\source-manifest-eu.json'
 $godManifest=Join-Path $root 'manifests\source-manifest-ru-god.json'
 $usaManifest=Join-Path $root 'manifests\source-manifest-usa-europe.json'
+$usaR2Manifest=Join-Path $root 'manifests\source-manifest-usa-europe-r2.json'
+$sazanManifest=Join-Path $root 'manifests\source-manifest-sazanoff.json'
 if(-not(Test-Path -LiteralPath "$release\Launcher.exe")){throw 'ReleaseRoot is not a PC Edition release'}
 if(-not(Test-Path -LiteralPath "$original\Default.xex")){throw 'OriginalRoot has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$russian\Default.xex")){throw 'RussianRoot has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$alternate\Default.xex")){throw 'AlternateGodRoot has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$usa\Default.xex")){throw 'UsaEuropeRoot has no Default.xex'}
+if(-not(Test-Path -LiteralPath "$usaR2\Default.xex")){throw 'UsaEuropeR2Root has no Default.xex'}
+if(-not(Test-Path -LiteralPath "$sazan\Default.xex")){throw 'SazanOffRoot has no Default.xex'}
 
 & "$root\build_tools.ps1"
 if($LASTEXITCODE){throw 'Tool build failed'}
 
-foreach($generated in @($port,$patches)){
+foreach($generated in @($port,$patches,$sets)){
   $full=[IO.Path]::GetFullPath($generated)
   if(-not $full.StartsWith([IO.Path]::GetFullPath($payload),[StringComparison]::OrdinalIgnoreCase)){throw "Unsafe generated path: $full"}
   if(Test-Path -LiteralPath $full){Remove-Item -LiteralPath $full -Recurse -Force}
@@ -62,11 +71,16 @@ if($LASTEXITCODE){throw 'Source manifest generation failed'}
 if($LASTEXITCODE){throw 'Alternate source manifest generation failed'}
 & "$root\build\tools\BuildGameManifest.exe" $usa $usaManifest 'usa-europe-retail' 'Xbox 360 USA / Europe retail donor'
 if($LASTEXITCODE){throw 'USA/Europe source manifest generation failed'}
+& "$root\build\tools\BuildGameManifest.exe" $usaR2 $usaR2Manifest 'usa-europe-retail-r2' 'Xbox 360 USA / Europe retail donor (revision 2)'
+if($LASTEXITCODE){throw 'USA/Europe revision 2 source manifest generation failed'}
+& "$root\build\tools\BuildGameManifest.exe" $sazan $sazanManifest 'sazanoff-rus-god' 'Xbox 360 Region Free RUS GOD (SazanOFF v1.0b)'
+if($LASTEXITCODE){throw 'SazanOFF source manifest generation failed'}
 & "$root\build\tools\BuildPayloadManifest.exe" $port "$payload\payload-manifest.json"
 if($LASTEXITCODE){throw 'Payload manifest generation failed'}
 
-$euPatches=Join-Path $patches 'eu-retail';$godPatches=Join-Path $patches 'ru-god-alt';$usaPatches=Join-Path $patches 'usa-europe-retail'
-New-Item -ItemType Directory -Force -Path $euPatches,$godPatches,$usaPatches | Out-Null
+$euPatches=Join-Path $sets 'eu-retail';$godPatches=Join-Path $sets 'ru-god-alt';$usaPatches=Join-Path $sets 'usa-europe-retail'
+$usaR2Patches=Join-Path $sets 'usa-europe-retail-r2';$sazanPatches=Join-Path $sets 'sazanoff-rus-god'
+New-Item -ItemType Directory -Force -Path $euPatches,$godPatches,$usaPatches,$usaR2Patches,$sazanPatches | Out-Null
 & "$root\build\tools\BuildEotpPatches.exe" $euManifest $original $original $euPatches 'original.json' 'EU donor to clean Original'
 if($LASTEXITCODE){throw 'EU Original delta generation failed'}
 & "$root\build\tools\BuildEotpPatches.exe" $euManifest $original $russian $euPatches 'russian.json' 'EU donor to final Russian PC Edition'
@@ -79,5 +93,19 @@ if($LASTEXITCODE){throw 'GOD Russian delta generation failed'}
 if($LASTEXITCODE){throw 'USA/Europe Original delta generation failed'}
 & "$root\build\tools\BuildEotpPatches.exe" $usaManifest $usa $russian $usaPatches 'russian.json' 'USA/Europe retail donor to final Russian PC Edition'
 if($LASTEXITCODE){throw 'USA/Europe Russian delta generation failed'}
+& "$root\build\tools\BuildEotpPatches.exe" $usaR2Manifest $usaR2 $original $usaR2Patches 'original.json' 'USA/Europe revision 2 to clean Original'
+if($LASTEXITCODE){throw 'USA/Europe revision 2 Original delta generation failed'}
+& "$root\build\tools\BuildEotpPatches.exe" $usaR2Manifest $usaR2 $russian $usaR2Patches 'russian.json' 'USA/Europe revision 2 to final Russian PC Edition'
+if($LASTEXITCODE){throw 'USA/Europe revision 2 Russian delta generation failed'}
+& "$root\build\tools\BuildEotpPatches.exe" $sazanManifest $sazan $original $sazanPatches 'original.json' 'SazanOFF Russian GOD to clean Original'
+if($LASTEXITCODE){throw 'SazanOFF Original delta generation failed'}
+& "$root\build\tools\BuildEotpPatches.exe" $sazanManifest $sazan $russian $sazanPatches 'russian.json' 'SazanOFF Russian GOD to final Russian PC Edition'
+if($LASTEXITCODE){throw 'SazanOFF Russian delta generation failed'}
+
+# Everything above is per-image. This turns it into what actually ships: one
+# index keyed by file hash, with each delta stored once.
+& python "$root\tools\build_patch_index.py"
+if($LASTEXITCODE){throw 'Patch index generation failed'}
+if(-not(Test-Path -LiteralPath "$patches\index.json")){throw 'Patch index was not produced'}
 
 Write-Output "Payload ready: $payload"

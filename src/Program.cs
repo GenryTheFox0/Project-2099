@@ -23,6 +23,23 @@ namespace EotInstaller {
         Console.WriteLine("PASS {0} {1} {2}", probe.Kind, probe.DisplayName, probe.Region);
         return;
       }
+#if EOT_INSTALLER_TEST
+      if (args.Length >= 3 && String.Equals(args[0], "--extract-source", StringComparison.OrdinalIgnoreCase)) {
+        new InstallerCore().ExtractKnownFiles(args[1], Path.GetFullPath(args[2]), Console.Out);
+        Console.WriteLine("PASS extracted " + args[2]);
+        return;
+      }
+      if (args.Length >= 2 && String.Equals(args[0], "--diff-source", StringComparison.OrdinalIgnoreCase)) {
+        var differ = new InstallerCore();
+        using (TextWriter writer = args.Length >= 3
+          ? new StreamWriter(args[2], false, new System.Text.UTF8Encoding(false))
+          : Console.Out) {
+          differ.ReportSourceDifferences(args[1], writer);
+        }
+        Console.WriteLine("PASS diffed " + args[1]);
+        return;
+      }
+#endif
       if (args.Length >= 2 && String.Equals(args[0], "--list-svod", StringComparison.OrdinalIgnoreCase)) {
         string container;
         if (!SvodImage.TryFindContainer(args[1], out container)) throw new InvalidDataException("SVOD container was not found");

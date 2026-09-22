@@ -4,7 +4,7 @@ $root=$PSScriptRoot
 $payload=Join-Path $root 'payload'
 $artifacts=Join-Path $root ('artifacts\release-'+$Version)
 $channel=Join-Path $root 'manifests\release-channel.json'
-if(-not(Test-Path -LiteralPath "$payload\payload-manifest.json") -or -not(Test-Path -LiteralPath "$payload\patches\eu-retail\russian.json") -or -not(Test-Path -LiteralPath "$payload\patches\ru-god-alt\russian.json")){throw 'Complete payload has not been prepared'}
+if(-not(Test-Path -LiteralPath "$payload\payload-manifest.json") -or -not(Test-Path -LiteralPath "$payload\patches\index.json") -or -not(Test-Path -LiteralPath "$payload\patches\data")){throw 'Complete payload has not been prepared'}
 New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
 $assetName="EOT-PC-Payload-$Version.zip"
 $asset=Join-Path $artifacts $assetName
@@ -39,7 +39,7 @@ $release=[ordered]@{
   Schema=1;Version=$Version;Repository='https://github.com/GenryTheFox0/Project-2099';
   Installer=[ordered]@{Name=$installerName;Size=$installerItem.Length;Sha256=$installerHash};
   Payload=[ordered]@{Name=$assetName;Size=$payloadItem.Length;Sha256=$payloadHash};
-  SupportedSources=@('usa-europe-retail','eu-retail','ru-god-alt');OriginalGameImageIncluded=$false;
+  SupportedSources=@('usa-europe-retail','usa-europe-retail-r2','eu-retail','ru-god-alt','sazanoff-rus-god');OriginalGameImageIncluded=$false;
   ContainsGameDerivedPatchBytes=$true
 }
 [IO.File]::WriteAllText((Join-Path $artifacts 'release-manifest.json'),($release|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))

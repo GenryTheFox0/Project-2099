@@ -552,7 +552,12 @@ namespace EotInstaller {
         return String.Format(L("Проверено: {0}\n{1} · ревизия: {2}", "Verified: {0}\n{1} · revision: {2}",
           "Geprüft: {0}\n{1} · Revision: {2}", "Vérifié : {0}\n{1} · révision : {2}",
           "Verificato: {0}\n{1} · revisione: {2}", "Verificado: {0}\n{1} · revisión: {2}"),
-          probe.DisplayName, probe.Kind, probe.Region);
+          probe.DisplayName, probe.Kind,
+          probe.ManifestId == "unknown-revision"
+            ? L("не из известных, и это нормально", "not one we know, and that is fine",
+                "keine bekannte, und das ist in Ordnung", "inconnue, et ce n’est pas un problème",
+                "non tra quelle note, e va bene", "no es de las conocidas, y no pasa nada")
+            : probe.Region);
       if (sourceState == CardState.Busy)
         return L("Проверяю ревизию…", "Checking the revision…", "Revision wird geprüft…", "Vérification de la révision…", "Verifica della revisione…", "Comprobando la revisión…");
       if (sourceState == CardState.Failed) return failureHint;
@@ -648,6 +653,28 @@ namespace EotInstaller {
         "Installazione e verifica completate. Avvia Launcher.exe — lì trovi impostazioni, mod e aggiornamenti.",
         "La instalación y la verificación han terminado. Inicia Launcher.exe — allí están los ajustes, mods y actualizaciones."), 17));
       pageContent.Children.Add(InfoBox(Mono(destinationPath, "#FFA8F0C8")));
+      if (core.LastUntranslatedFiles.Count > 0) {
+        int reached = core.LastTranslatedFiles, expected = core.LastExpectedTranslatedFiles;
+        pageContent.Children.Add(Body(L(
+          "Русский текст лёг на " + reached + " файлов из " + expected + ". В остальных остался текст вашего образа: он не совпал ни с одной известной сборкой, поэтому трогать его было нечем. На игру это не влияет, но часть надписей будет не на русском.",
+          "The Russian text was applied to " + reached + " files out of " + expected + ". The rest kept your dump's own text: it matched no build we know, so there was nothing to apply. The game runs, but some text will not be in Russian.",
+          "Der russische Text wurde auf " + reached + " von " + expected + " Dateien angewendet. Der Rest behielt den Text deines Abbilds: er passte zu keinem bekannten Build. Das Spiel läuft, aber ein Teil der Texte bleibt anderssprachig.",
+          "Le texte russe a été appliqué à " + reached + " fichiers sur " + expected + ". Le reste a gardé le texte de votre image : il ne correspond à aucune version connue. Le jeu fonctionne, mais une partie des textes ne sera pas en russe.",
+          "Il testo russo è stato applicato a " + reached + " file su " + expected + ". Il resto ha mantenuto il testo della tua immagine: non corrisponde a nessuna build nota. Il gioco funziona, ma una parte dei testi non sarà in russo.",
+          "El texto ruso se aplicó a " + reached + " archivos de " + expected + ". El resto conservó el texto de tu imagen: no coincide con ninguna versión conocida. El juego funciona, pero parte del texto no estará en ruso."), 14));
+        pageContent.Children.Add(InfoBox(Mono(
+          String.Join("\n", core.LastUntranslatedFiles.Take(6).ToArray()) +
+          (core.LastUntranslatedFiles.Count > 6 ? "\n+ " + (core.LastUntranslatedFiles.Count - 6) : ""), "#FFF0D2A0")));
+      }
+      if (core.LastSourceDeviations.Count > 0) {
+        pageContent.Children.Add(Body(L(
+          "Файлов, отличных от эталонной копии этой ревизии: " + core.LastSourceDeviations.Count + ". Установка прошла целиком — просто знай, что образ не идеально совпадает с эталоном.",
+          "Files differing from the reference copy of this revision: " + core.LastSourceDeviations.Count + ". The installation completed in full — just know the dump is not an exact match.",
+          "Dateien, die von der Referenzkopie dieser Revision abweichen: " + core.LastSourceDeviations.Count + ". Die Installation ist vollständig — das Abbild stimmt nur nicht exakt überein.",
+          "Fichiers différents de la copie de référence de cette révision : " + core.LastSourceDeviations.Count + ". L’installation est complète — sachez simplement que l’image n’est pas identique.",
+          "File diversi dalla copia di riferimento di questa revisione: " + core.LastSourceDeviations.Count + ". L’installazione è completa — sappi solo che l’immagine non combacia esattamente.",
+          "Archivos distintos de la copia de referencia de esta revisión: " + core.LastSourceDeviations.Count + ". La instalación se completó — solo debes saber que la imagen no coincide exactamente."), 14));
+      }
       var row = new StackPanel { Orientation = Orientation.Horizontal };
       var launch = CardButton(L("ЗАПУСТИТЬ LAUNCHER", "START LAUNCHER", "LAUNCHER STARTEN", "LANCER LE LAUNCHER", "AVVIA LAUNCHER", "INICIAR LAUNCHER"), true);
       launch.Height = 38; launch.FontSize = 13;

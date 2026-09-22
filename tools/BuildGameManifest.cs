@@ -13,7 +13,7 @@ sealed class GameManifest {
   public string Title = "Spider-Man: Edge of Time";
   public string TitleId = "415608B2";
   public string Region = "PC Edition original-language baseline (legacy folder donor)";
-  public List<string> QuickChecks = new List<string> { "Default.xex", "Data/Main.pkz", "Data/Act01.pkz" };
+  public List<string> QuickChecks = new List<string> { "Default.xex", "Data/Act01.pkz", "Data/05B_SM99_PortalRoom_PiP.pkz" };
   public List<ManifestFile> Files = new List<ManifestFile>();
 }
 

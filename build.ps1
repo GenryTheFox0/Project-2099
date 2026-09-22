@@ -6,8 +6,10 @@ $assets=Join-Path $root 'assets'
 $euManifest=Join-Path $root 'manifests\source-manifest-eu.json'
 $godManifest=Join-Path $root 'manifests\source-manifest-ru-god.json'
 $usaManifest=Join-Path $root 'manifests\source-manifest-usa-europe.json'
+$usaR2Manifest=Join-Path $root 'manifests\source-manifest-usa-europe-r2.json'
+$sazanManifest=Join-Path $root 'manifests\source-manifest-sazanoff.json'
 $projectLogo=Join-Path $assets 'brand\project2099_logo_transparent_v2.png'
-foreach($required in @("$assets\miguel.png","$assets\peter.png","$assets\eot.ico",$projectLogo,$euManifest,$godManifest,$usaManifest)){
+foreach($required in @("$assets\miguel.png","$assets\peter.png","$assets\eot.ico",$projectLogo,$euManifest,$godManifest,$usaManifest,$usaR2Manifest,$sazanManifest)){
   if(-not(Test-Path -LiteralPath $required)){throw "Required build input is missing: $required"}
 }
 New-Item -ItemType Directory -Force -Path $build | Out-Null
@@ -19,7 +21,9 @@ $common=@('/nologo','/platform:x64','/optimize+','/utf8output',"/win32icon:$asse
   "/resource:$assets\miguel.png,EOT.miguel.png","/resource:$assets\peter.png,EOT.peter.png",
   "/resource:$projectLogo,EOT.project2099_logo.png",
   "/resource:$euManifest,EOT.source-manifest.eu.json","/resource:$godManifest,EOT.source-manifest.ru-god.json",
-  "/resource:$usaManifest,EOT.source-manifest.usa-europe.json")
+  "/resource:$usaManifest,EOT.source-manifest.usa-europe.json",
+  "/resource:$usaR2Manifest,EOT.source-manifest.usa-europe-r2.json",
+  "/resource:$sazanManifest,EOT.source-manifest.sazanoff.json")
 foreach($reference in $references){$common+="/reference:$reference"}
 $compression=@('System.IO.Compression.dll','System.IO.Compression.FileSystem.dll')|ForEach-Object{Join-Path $fx $_}
 foreach($reference in $compression){$common+="/reference:$reference"}
