@@ -488,6 +488,13 @@ namespace EotInstaller {
       ValidatePatchIndex(index, patchesRoot);
       using (IGameSource source = OpenSource(sourcePath)) {
         List<ManifestFile> files = CollectSourceFiles(source);
+        // Beyond the three files that say "this is the game", the packages the
+        // translation lands in must be there too: a dump missing one of those is
+        // truncated, and finding that out now beats finding it out in the game.
+        foreach (string required in russianPatches.Values.Select(entry => entry.Path)
+          .Distinct(StringComparer.OrdinalIgnoreCase))
+          if (!files.Any(file => SamePath(file.Path, required)))
+            throw new InvalidDataException("Игра в источнике неполная: не хватает " + required);
         GameManifest revision = RecogniseRevision(files, source, cancellation);
         long sourceBytes = files.Sum(file => file.Size);
         long total = payload.Files.Sum(file => file.Size) + sourceBytes * 3;
