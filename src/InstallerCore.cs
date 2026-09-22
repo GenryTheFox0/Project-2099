@@ -528,28 +528,31 @@ namespace EotInstaller {
             }
           }
 
+          // Decide before writing anything: a half-translated tree is worse than
+           // an English one, because the strings need the translated fonts to be
+           // legible at all.
+          List<string> missing = PlanTranslation(files);
+          bool translate = missing.Count == 0;
+          LastUntranslatedFiles = missing;   // the receipt is written before the move, and must say this
           var englishOriginal = new List<string>();
           var englishRussian = new List<string>();
           BuildTree("Original", files, index, donorRoot, Path.Combine(stage, "Data", "Original"),
             patchesRoot, false, englishOriginal, progress, cancellation, ref completed, total);
           applied["Original"] = englishOriginal;
           applied["Russian"] = BuildTree("Russian", files, index, donorRoot, Path.Combine(stage, "Data", "Russian"),
-            patchesRoot, true, englishRussian, progress, cancellation, ref completed, total);
+            patchesRoot, translate, englishRussian, progress, cancellation, ref completed, total);
           Directory.Delete(donorRoot, true);
-          ApplyDefaultLanguage(stage, selectedLanguage);
+          ApplyDefaultLanguage(stage, selectedLanguage, translate);
           WriteReceipt(stage, source, files, revision, payload, index, applied, selectedLanguage);
 
           cancellation.ThrowIfCancellationRequested();
           if (Directory.Exists(target)) Directory.Delete(target, false);
           Directory.Move(stage, target);
-          WriteLauncherFirstRunLanguage(selectedLanguage);
+          WriteLauncherFirstRunLanguage(translate ? selectedLanguage
+            : (selectedLanguage == RussianLanguageId ? 1 : selectedLanguage));
           LastTranslatedFiles = applied["Russian"].Count;
-          LastExpectedTranslatedFiles = index.Russian.Select(entry => entry.Path)
+          LastExpectedTranslatedFiles = russianPatches.Values.Select(entry => entry.Path)
             .Distinct(StringComparer.OrdinalIgnoreCase).Count();
-          LastUntranslatedFiles = index.Russian.Select(entry => NormalizeRelative(entry.Path))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(path => !applied["Russian"].Any(done => SamePath(done, path)))
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList();
           LastRevisionName = revision == null ? null : revision.Region;
           Report(progress, "Готово", "Launcher.exe", total, total);
         } catch {
@@ -557,6 +560,23 @@ namespace EotInstaller {
           throw;
         }
       }
+    }
+
+    // Which of the translated files this dump cannot produce. Every hash is
+    // already known from the copy, so this costs nothing and answers the only
+    // question that matters before the Russian tree is written.
+    List<string> PlanTranslation(List<ManifestFile> files) {
+      var missing = new List<string>();
+      foreach (string path in russianPatches.Values.Select(entry => entry.Path)
+        .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase)) {
+        ManifestFile file = files.FirstOrDefault(value => SamePath(value.Path, path));
+        if (file == null) { missing.Add(path); continue; }
+        string hash = file.Sha256;
+        PatchEntry english = FindPatch(englishPatches, path, hash);
+        if (english != null) hash = english.TargetSha256;
+        if (FindPatch(russianPatches, path, hash) == null) missing.Add(path);
+      }
+      return missing;
     }
 
     // One file, two possible steps: bring its text to the canonical English, then
@@ -693,6 +713,14 @@ namespace EotInstaller {
         SourceFiles = files.Count,
         SourceBytes = files.Sum(file => file.Size),
         EnglishPatchesApplied = applied["Original"].Count,
+        TranslationComplete = LastUntranslatedFiles.Count == 0,
+        UntranslatableFiles = LastUntranslatedFiles.ToArray(),
+        UntranslatableSourceHashes = LastUntranslatedFiles
+          .Select(path => new {
+            Path = path,
+            Sha256 = files.Where(file => SamePath(file.Path, path))
+              .Select(file => file.Sha256).FirstOrDefault()
+          }).ToArray(),
         TranslatedFiles = applied["Russian"].OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
         TranslatableFiles = index.Russian.Select(entry => entry.Path)
           .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
@@ -702,13 +730,24 @@ namespace EotInstaller {
       File.WriteAllText(Path.Combine(directory, "INSTALL_RECEIPT.json"), text, new UTF8Encoding(false));
     }
 
-    static void ApplyDefaultLanguage(string stage, int language) {
+    const int RussianLanguageId = 12;
+
+    static string SetTomlValue(string text, string key, string line) {
+      var expression = new Regex(@"(?m)^\s*" + Regex.Escape(key) + @"\s*=\s*[^\r\n]+$");
+      return expression.IsMatch(text) ? expression.Replace(text, line, 1) : line + "\r\n" + text;
+    }
+
+    // The language picks the tree as well as the track: Russian text is only
+    // legible with the Russian fonts, and both live in Data/Russian.
+    static void ApplyDefaultLanguage(string stage, int language, bool translated) {
       string config = Path.Combine(stage, "spider_man_edge_of_time.toml");
       if (!File.Exists(config)) return;
+      bool russian = language == RussianLanguageId && translated;
+      if (!russian && language == RussianLanguageId) language = 1;
       string text = File.ReadAllText(config, Encoding.UTF8);
-      var expression = new Regex(@"(?m)^\s*user_language\s*=\s*[^\r\n]+$");
-      string line = "user_language = " + language;
-      text = expression.IsMatch(text) ? expression.Replace(text, line, 1) : line + "\r\n" + text;
+      text = SetTomlValue(text, "user_language", "user_language = " + language);
+      text = SetTomlValue(text, "game_data_root",
+        "game_data_root = '" + (russian ? "Data/Russian" : "Data/Original") + "'");
       File.WriteAllText(config, text, new UTF8Encoding(false));
     }
 
