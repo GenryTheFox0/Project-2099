@@ -236,7 +236,12 @@ namespace EotInstaller {
 
     static long SafeLength(string file) { try { return new FileInfo(file).Length; } catch { return -1; } }
 
-    static string AppDataRoot() {
+    /// <summary>Where the game is being installed. The payload is cached beside
+    /// it when the system drive cannot hold it, which is the common case on a
+    /// machine whose C: is full and whose games live elsewhere.</summary>
+    public static string DestinationHint;
+
+    static string ProfileRoot() {
 #if EOT_INSTALLER_TEST
       string testRoot = Environment.GetEnvironmentVariable("EOT_INSTALLER_TEST_APPDATA");
       if (!String.IsNullOrWhiteSpace(testRoot))
@@ -244,15 +249,65 @@ namespace EotInstaller {
 #endif
       return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GenryTheFox", "EOTInstaller");
     }
+
+    static long FreeSpace(string path) {
+      try {
+        string root = Path.GetPathRoot(Path.GetFullPath(path));
+        if (String.IsNullOrEmpty(root)) return -1;
+        return new DriveInfo(root).AvailableFreeSpace;
+      } catch { return -1; }
+    }
+
+    static string DriveName(string path) {
+      try { return Path.GetPathRoot(Path.GetFullPath(path)).TrimEnd('\\'); } catch { return path; }
+    }
+
+    static string Gigabytes(long bytes) {
+      return (bytes / 1073741824.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ГБ";
+    }
+
+    // The archive is kept while it is unpacked, so both have to fit at once.
+    static long NeededBytes(ReleaseChannel channel) {
+      long payload = channel == null || channel.PayloadSize <= 0 ? 1073741824L : channel.PayloadSize;
+      return payload * 2 + 268435456L;
+    }
+
+    static string AppDataRoot() { return CacheRoot(null); }
+
+    static string CacheRoot(ReleaseChannel channel) {
+      string profile = ProfileRoot();
+      long needed = NeededBytes(channel);
+      string destination = DestinationHint;
+      if (!String.IsNullOrWhiteSpace(destination)) {
+        try {
+          string beside = Path.Combine(Path.GetPathRoot(Path.GetFullPath(destination)) ?? "", "EOTInstallerCache");
+          if (!String.IsNullOrWhiteSpace(Path.GetPathRoot(beside))) {
+            bool profileFits = FreeSpace(profile) >= needed;
+            if (!profileFits && FreeSpace(beside) >= needed) return beside;
+          }
+        } catch { }
+      }
+      return profile;
+    }
+
+    void RequireRoomFor(ReleaseChannel channel) {
+      string root = CacheRoot(channel);
+      long needed = NeededBytes(channel), free = FreeSpace(root);
+      if (free >= 0 && free < needed)
+        throw new IOException("Не хватает места на диске " + DriveName(root) + ": нужно " + Gigabytes(needed) +
+          ", свободно " + Gigabytes(free) + ". Освободите место или выберите папку установки на другом диске.");
+    }
     static string DownloadsCache() { return Path.Combine(AppDataRoot(), "downloads"); }
-    static string CacheFolder(ReleaseChannel channel) { return Path.Combine(AppDataRoot(), "payloads", SafeName(channel.Version)); }
+    static string DownloadsCache(ReleaseChannel channel) { return Path.Combine(CacheRoot(channel), "downloads"); }
+    static string CacheFolder(ReleaseChannel channel) { return Path.Combine(CacheRoot(channel), "payloads", SafeName(channel.Version)); }
     static string ReadyMarker(string cache) { return cache + ".ready"; }
 
     // ---------------------------------------------------------------- download
 
     async Task<string> DownloadAsync(string url, ReleaseChannel channel, Action<InstallProgress> progress, CancellationToken cancellation) {
-      Directory.CreateDirectory(DownloadsCache());
-      string archive = Path.Combine(DownloadsCache(), AssetName(channel));
+      RequireRoomFor(channel);
+      Directory.CreateDirectory(DownloadsCache(channel));
+      string archive = Path.Combine(DownloadsCache(channel), AssetName(channel));
       string part = archive + ".part";
       if (File.Exists(archive) && SafeLength(archive) == channel.PayloadSize &&
           String.Equals(HashFile(archive, progress, "Проверка архива", cancellation), channel.PayloadSha256, StringComparison.OrdinalIgnoreCase))

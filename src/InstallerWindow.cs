@@ -775,6 +775,9 @@ namespace EotInstaller {
     }
 
     async Task ResolvePayload(string manualPath, bool force) {
+      // The payload is cached on whichever drive can hold it, and the chosen
+      // destination is the best hint we have about that.
+      PayloadProvider.DestinationHint = destinationPath;
       if (payloadRunning) return;
       if (payloadPath != null && !force) return;
       payloadRunning = true; payloadState = CardState.Busy; payloadPath = null; RenderPage();

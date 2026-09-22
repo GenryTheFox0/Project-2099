@@ -88,6 +88,9 @@ namespace EotInstaller {
         return;
       }
       if (args.Length >= 1 && String.Equals(args[0], "--payload-test", StringComparison.OrdinalIgnoreCase)) {
+        // Second argument stands in for the destination the window would have
+        // chosen, which decides where the payload may be cached.
+        if (args.Length >= 2) PayloadProvider.DestinationHint = args[1];
         var provider = new PayloadProvider(); int last = -5;
         string path = provider.ResolveAsync(p => { int percent = (int)(p.Ratio * 100); if (percent >= last + 5 || percent == 100) { Console.WriteLine("{0}% {1}", percent, p.Phase); last = percent; } }, CancellationToken.None).GetAwaiter().GetResult();
         Console.WriteLine("PASS payload " + path); return;
