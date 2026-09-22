@@ -543,6 +543,7 @@ namespace EotInstaller {
             patchesRoot, translate, englishRussian, progress, cancellation, ref completed, total);
           Directory.Delete(donorRoot, true);
           ApplyDefaultLanguage(stage, selectedLanguage, translate);
+          ApplyUpdateSources(stage);
           WriteReceipt(stage, source, files, revision, payload, index, applied, selectedLanguage);
 
           cancellation.ThrowIfCancellationRequested();
@@ -739,6 +740,45 @@ namespace EotInstaller {
 
     // The language picks the tree as well as the track: Russian text is only
     // legible with the Russian fonts, and both live in Data/Russian.
+    // Where the launcher looks for changed-file updates. Written here so a
+    // payload that predates a move cannot leave a fresh install unable to
+    // receive one; the launcher still verifies every file it downloads.
+    static void ApplyUpdateSources(string stage) {
+      string path = Path.Combine(stage, "update.sources.json");
+      if (!File.Exists(path)) return;
+      const string document =
+        "{\r\n" +
+        "  \"Format\": \"genry.eot.update-sources\",\r\n" +
+        "  \"Schema\": 1,\r\n" +
+        "  \"Channel\": \"stable\",\r\n" +
+        "  \"MinimumGeneration\": 10303,\r\n" +
+        "  \"Sources\": [\r\n" +
+        "    {\r\n" +
+        "      \"Name\": \"GitHub\",\r\n" +
+        "      \"Kind\": \"github\",\r\n" +
+        "      \"Enabled\": true,\r\n" +
+        "      \"ManifestUrl\": \"https://github.com/GenryTheFox0/Project-2099/releases/latest/download/EOT.update-manifest.json\",\r\n" +
+        "      \"ContentBaseUrl\": \"https://github.com/GenryTheFox0/Project-2099/releases/download/\"\r\n" +
+        "    },\r\n" +
+        "    {\r\n" +
+        "      \"Name\": \"GitLab\",\r\n" +
+        "      \"Kind\": \"gitlab\",\r\n" +
+        "      \"Enabled\": false,\r\n" +
+        "      \"ManifestUrl\": \"\",\r\n" +
+        "      \"ContentBaseUrl\": \"\"\r\n" +
+        "    },\r\n" +
+        "    {\r\n" +
+        "      \"Name\": \"Static CDN\",\r\n" +
+        "      \"Kind\": \"static-cdn\",\r\n" +
+        "      \"Enabled\": false,\r\n" +
+        "      \"ManifestUrl\": \"\",\r\n" +
+        "      \"ContentBaseUrl\": \"\"\r\n" +
+        "    }\r\n" +
+        "  ]\r\n" +
+        "}\r\n";
+      File.WriteAllText(path, document, new UTF8Encoding(false));
+    }
+
     static void ApplyDefaultLanguage(string stage, int language, bool translated) {
       string config = Path.Combine(stage, "spider_man_edge_of_time.toml");
       if (!File.Exists(config)) return;
