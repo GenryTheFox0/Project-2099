@@ -260,18 +260,38 @@ namespace EotInstaller {
       return null;
     }
 
+    static bool IsPackagedSource(string file) {
+      string extension = Path.GetExtension(file);
+      return String.Equals(extension, ".iso", StringComparison.OrdinalIgnoreCase) ||
+        String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Same reach as the game-root search: a downloaded image usually sits one folder
+    // deeper than the folder the player points at.
+    static void CollectPackagedSources(string directory, int depth, List<string> matches, int[] budget) {
+      if (budget[0]-- <= 0) return;
+      try {
+        foreach (string file in Directory.GetFiles(directory).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+          if (IsPackagedSource(file)) matches.Add(Path.GetFullPath(file));
+      } catch (UnauthorizedAccessException) { return; }
+      catch (IOException) { return; }
+      if (depth >= 2 || matches.Count > 0) return;
+      foreach (string child in GetChildDirectories(directory).Take(32)) {
+        if (SkipWrapperDirectory(child)) continue;
+        CollectPackagedSources(child, depth + 1, matches, budget);
+        if (matches.Count > 0) return;
+      }
+    }
+
     static string FindSinglePackagedSource(string selectedPath) {
       if (!Directory.Exists(selectedPath)) return null;
-      string[] files;
-      try {
-        files = Directory.GetFiles(selectedPath).Where(file => {
-          string extension = Path.GetExtension(file);
-          return String.Equals(extension, ".iso", StringComparison.OrdinalIgnoreCase) ||
-            String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase);
-        }).Take(3).ToArray();
-      } catch (UnauthorizedAccessException) { return null; }
-      catch (IOException) { return null; }
-      return files.Length == 1 ? files[0] : null;
+      var matches = new List<string>();
+      CollectPackagedSources(Path.GetFullPath(selectedPath), 0, matches, new int[] { 128 });
+      matches = matches.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+      if (matches.Count > 1) throw new InvalidDataException(
+        "В выбранной папке несколько образов. Выбери нужный файл: " +
+        String.Join("; ", matches.Select(Path.GetFileName).ToArray()));
+      return matches.Count == 1 ? matches[0] : null;
     }
 
     IGameSource OpenSource(string path) {
@@ -286,7 +306,7 @@ namespace EotInstaller {
         if (String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)) return new ZipGameSource(packaged);
       }
       throw new InvalidDataException(
-        "Выбери Xbox 360 USA/Europe ISO, ZIP, GOD/00007000 или внешнюю папку, внутри которой находится Default.xex и каталог Data");
+        "В выбранном месте игры нет. Подойдёт любое из трёх: файл .iso или .zip; папка GOD-образа (в ней лежит 00007000 или файл без расширения рядом с папкой .data); папка с Default.xex и каталогом Data");
     }
 
     public Task<SourceProbe> ProbeAsync(string sourcePath, Action<InstallProgress> progress,

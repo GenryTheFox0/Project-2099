@@ -43,12 +43,54 @@ namespace EotInstaller {
       public Cursor(string prefix, uint block, uint ordinal) { Prefix = prefix; Block = block; Ordinal = ordinal; }
     }
 
+    // A GOD rip travels as <anything>/<TitleId>/00007000/<container>, and players pick
+    // whichever folder they see: the outer one, the title id, or the .data directory.
+    // Only the middle one used to be accepted, so a perfectly readable image was turned
+    // away with "choose an ISO, ZIP or GOD/00007000". Find the container instead.
     public static bool TryFindContainer(string selectedPath, out string container) {
       container = null;
-      if (File.Exists(selectedPath) && IsContainerHeader(selectedPath)) { container = Path.GetFullPath(selectedPath); return true; }
+      if (File.Exists(selectedPath)) {
+        if (IsContainerHeader(selectedPath)) { container = Path.GetFullPath(selectedPath); return true; }
+        return TryContainerOfDataDirectory(Path.GetDirectoryName(Path.GetFullPath(selectedPath)), out container);
+      }
       if (!Directory.Exists(selectedPath)) return false;
-      foreach (string file in Directory.GetFiles(selectedPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
+      string selected = Path.GetFullPath(selectedPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+      if (TryContainerOfDataDirectory(selected, out container)) return true;
+      return TryFindContainerIn(selected, 0, new int[] { 512 }, out container);
+    }
+
+    // The selection is the data directory of a container sitting next to it.
+    static bool TryContainerOfDataDirectory(string directory, out string container) {
+      container = null;
+      if (directory == null) return false;
+      string trimmed = directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+      if (!trimmed.EndsWith(".data", StringComparison.OrdinalIgnoreCase)) return false;
+      string candidate = trimmed.Substring(0, trimmed.Length - ".data".Length);
+      if (!File.Exists(candidate) || !IsContainerHeader(candidate)) return false;
+      container = Path.GetFullPath(candidate);
+      return true;
+    }
+
+    // Bounded walk, so pointing the installer at a whole drive costs a few hundred
+    // directory listings rather than a full scan.
+    static bool TryFindContainerIn(string directory, int depth, int[] budget, out string container) {
+      container = null;
+      if (budget[0]-- <= 0) return false;
+      string[] files;
+      try { files = Directory.GetFiles(directory); }
+      catch (UnauthorizedAccessException) { return false; }
+      catch (IOException) { return false; }
+      foreach (string file in files.OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
         if (Directory.Exists(file + ".data") && IsContainerHeader(file)) { container = Path.GetFullPath(file); return true; }
+      }
+      if (depth >= 3) return false;
+      string[] children;
+      try { children = Directory.GetDirectories(directory); }
+      catch (UnauthorizedAccessException) { return false; }
+      catch (IOException) { return false; }
+      foreach (string child in children.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).Take(64)) {
+        if (child.EndsWith(".data", StringComparison.OrdinalIgnoreCase)) continue;
+        if (TryFindContainerIn(child, depth + 1, budget, out container)) return true;
       }
       return false;
     }
