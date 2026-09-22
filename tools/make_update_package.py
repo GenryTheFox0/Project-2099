@@ -19,10 +19,10 @@ PORT = 'D:/EOT_PC_FEATURES_20260905/EOTGitHubInstaller/payload/port'
 OUT = 'D:/EOT_PC_FEATURES_20260905/EOTGitHubInstaller/artifacts/update-v2.0.0-beta.3'
 REPO = 'https://github.com/GenryTheFox0/Project-2099'
 TAG = 'update-files-v2.0.0-beta.3'   # служебный пререлиз, чтобы не засорять страницу релиза
-GENERATION = 20304          # above MinimumGeneration 10303; one step per release
+GENERATION = 20305          # above MinimumGeneration 10303; one step per release
 RELEASE = 'v2.0.0-beta.3'
 PUBLISHED = '2026-09-22T12:00:00Z'
-NOTES = 'Паутина вместо строки состояния, живые источники обновлений, DPI-осознанность порта'
+NOTES = 'Отдельная страница обновления с паутиной, анимация поиска, живые источники'
 
 # What actually changed between BETA 2 and BETA 3.
 CHANGED = ['SpiderManEOT.exe', 'rexruntime.dll', 'Launcher.exe', 'Launcher.UpdateHelper.exe',
