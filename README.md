@@ -155,7 +155,7 @@ For the normal online installation, download only `EOTInstaller-v1.0.0-beta.3.ex
 
 Installation guides: [English](INSTALL_EN.md) · [Русский](INSTALL_RU.md) · [Deutsch](INSTALL_DE.md) · [Français](INSTALL_FR.md) · [Italiano](INSTALL_IT.md) · [Español](INSTALL_ES.md)
 
-The input can be an XDVDFS ISO, a ZIP containing the game root, an extracted folder containing `Default.xex` and `Data`, an outer folder containing one compatible game root, or a GOD/SVOD container. A GOD image may be selected at any level a player is likely to click: the outer folder, the title-id folder, `00007000`, the container file itself or its `.data` directory. If a selected directory contains one ISO or ZIP, the installer opens it automatically.
+The input can be an XDVDFS ISO, a ZIP containing the game root, a ZIP containing a GOD image (the installer unpacks it itself onto a drive with room and checks every fragment's length), an extracted folder containing `Default.xex` and `Data`, an outer folder containing one compatible game root, or a GOD/SVOD container. A GOD image may be selected at any level a player is likely to click: the outer folder, the title-id folder, `00007000`, the container file itself or its `.data` directory. If a selected directory contains one ISO or ZIP, the installer opens it automatically.
 
 After a successful installation, the source ISO, GOD or extracted folder is no longer needed. The PC Edition runs entirely from the chosen destination and is not tied to the source drive letter. Saves and installer caches use the current Windows user's profile rather than a developer-specific path.
 

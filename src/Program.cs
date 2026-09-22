@@ -18,6 +18,9 @@ namespace EotInstaller {
     static void Main(string[] args) {
       try { SetProcessDPIAware(); } catch { }
       if (args.Length >= 2 && String.Equals(args[0], "--probe", StringComparison.OrdinalIgnoreCase)) {
+        // Third argument stands in for the chosen destination, which decides where
+        // a ZIP image may be unpacked.
+        if (args.Length >= 3) PayloadProvider.DestinationHint = args[2];
         var core = new InstallerCore();
         SourceProbe probe = core.ProbeAsync(args[1], null, CancellationToken.None).GetAwaiter().GetResult();
         Console.WriteLine("PASS {0} {1} {2}", probe.Kind, probe.DisplayName, probe.Region);

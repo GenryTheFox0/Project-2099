@@ -274,6 +274,26 @@ namespace EotInstaller {
 
     static string AppDataRoot() { return CacheRoot(null); }
 
+    /// <summary>A directory on a drive that can hold <paramref name="neededBytes"/>:
+    /// the profile drive when it fits, the destination drive otherwise, and a
+    /// plain refusal naming both when neither can.</summary>
+    public static string ScratchRoot(long neededBytes, string purpose) {
+      string profile = ProfileRoot();
+      long profileFree = FreeSpace(profile);
+      if (profileFree < 0 || profileFree >= neededBytes) return profile;
+      string destination = DestinationHint;
+      if (!String.IsNullOrWhiteSpace(destination)) {
+        try {
+          string beside = Path.Combine(Path.GetPathRoot(Path.GetFullPath(destination)) ?? "", "EOTInstallerCache");
+          if (!String.IsNullOrWhiteSpace(Path.GetPathRoot(beside)) && FreeSpace(beside) >= neededBytes) return beside;
+        } catch { }
+      }
+      throw new IOException("Не хватает места для операции «" + purpose + "»: нужно " + Gigabytes(neededBytes) +
+        ", на диске " + DriveName(profile) + " свободно " + Gigabytes(profileFree) +
+        (String.IsNullOrWhiteSpace(destination) ? "" : ", на диске " + DriveName(destination) + " свободно " + Gigabytes(FreeSpace(destination))) +
+        ". Освободите место или выберите папку установки на другом диске.");
+    }
+
     static string CacheRoot(ReleaseChannel channel) {
       string profile = ProfileRoot();
       long needed = NeededBytes(channel);

@@ -69,6 +69,9 @@ namespace EotInstaller {
 
   sealed class SvodGameSource : IGameSource {
     readonly SvodImage image;
+    // Set when the image was unpacked out of a ZIP by the installer itself, so
+    // the copy can be dropped once the install has what it needs.
+    public string Scratch;
     public SvodGameSource(string path) { image = new SvodImage(path); }
     public string Kind { get { return "xbox360-god-svod"; } }
     public string Name { get { return image.Name; } }
@@ -389,7 +392,9 @@ namespace EotInstaller {
       return matches.Count == 1 ? matches[0] : null;
     }
 
-    IGameSource OpenSource(string path) {
+    IGameSource OpenSource(string path) { return OpenSource(path, null); }
+
+    IGameSource OpenSource(string path, Action<InstallProgress> progress) {
       string gameRoot = FindDirectoryGameRoot(path);
       if (gameRoot != null) return new DirectoryGameSource(gameRoot);
       string container;
@@ -398,7 +403,14 @@ namespace EotInstaller {
       if (packaged != null) {
         string extension = Path.GetExtension(packaged);
         if (String.Equals(extension, ".iso", StringComparison.OrdinalIgnoreCase)) return new IsoGameSource(packaged);
-        if (String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)) return new ZipGameSource(packaged);
+        if (String.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)) {
+          // A ZIP of a GOD image is what the torrents hand out. Unpack it ourselves
+          // rather than asking the player to -- that is how fragments get cut short.
+          string unpackedContainer, scratch;
+          if (SvodImage.TryExtractFromZip(packaged, progress, out unpackedContainer, out scratch))
+            return new SvodGameSource(unpackedContainer) { Scratch = scratch };
+          return new ZipGameSource(packaged);
+        }
       }
       throw new InvalidDataException(
         "В выбранном месте игры нет. Подойдёт любое из трёх: файл .iso или .zip; папка GOD-образа (в ней лежит 00007000 или файл без расширения рядом с папкой .data); папка с Default.xex и каталогом Data");
@@ -407,7 +419,7 @@ namespace EotInstaller {
     public Task<SourceProbe> ProbeAsync(string sourcePath, Action<InstallProgress> progress,
       CancellationToken cancellation) {
       return Task.Run(() => {
-        using (IGameSource source = OpenSource(sourcePath)) {
+        using (IGameSource source = OpenSource(sourcePath, progress)) {
           List<ManifestFile> files = CollectSourceFiles(source);
           GameManifest revision = RecogniseRevision(files, source, cancellation);
           return new SourceProbe {
@@ -486,7 +498,14 @@ namespace EotInstaller {
       ValidatePayloadManifest(payload);
       PatchIndex index = LoadJson<PatchIndex>(Path.Combine(patchesRoot, "index.json"));
       ValidatePatchIndex(index, patchesRoot);
-      using (IGameSource source = OpenSource(sourcePath)) {
+      // The destination is the best hint about where a ZIP image may be unpacked
+      // and where the payload may be cached; the window sets it too, but the
+      // install must not depend on that.
+      PayloadProvider.DestinationHint = target;
+      string scratchToDrop = null;
+      using (IGameSource source = OpenSource(sourcePath, progress)) {
+        var unpacked = source as SvodGameSource;
+        if (unpacked != null) scratchToDrop = unpacked.Scratch;
         List<ManifestFile> files = CollectSourceFiles(source);
         // Beyond the three files that say "this is the game", the packages the
         // translation lands in must be there too: a dump missing one of those is
@@ -561,6 +580,9 @@ namespace EotInstaller {
           throw;
         }
       }
+      // The unpacked copy of a ZIP image has served its purpose; a failed install
+      // keeps it, so a retry does not unpack five gigabytes again.
+      if (scratchToDrop != null) { try { Directory.Delete(scratchToDrop, true); } catch { } }
     }
 
     // Which of the translated files this dump cannot produce. Every hash is

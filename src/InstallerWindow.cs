@@ -762,6 +762,7 @@ namespace EotInstaller {
 
     async Task Probe(string path) {
       sourcePath = path; probe = null; sourceState = CardState.Busy; RenderPage();
+      PayloadProvider.DestinationHint = destinationPath;   // a ZIP image may need unpacking somewhere with room
       var token = new CancellationTokenSource();
       try {
         probe = await core.ProbeAsync(path, p => Dispatcher.BeginInvoke(new Action(delegate {

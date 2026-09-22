@@ -47,6 +47,109 @@ namespace EotInstaller {
     // whichever folder they see: the outer one, the title id, or the .data directory.
     // Only the middle one used to be accepted, so a perfectly readable image was turned
     // away with "choose an ISO, ZIP or GOD/00007000". Find the container instead.
+    // A data fragment holds BlocksPerFile blocks plus its hash tables: one L0
+    // table per BlocksPerL0Hash blocks and one L1 table. Every fragment but the
+    // last is exactly that long, so a shorter one is an image that was cut off --
+    // an extraction that ran out of disk, a download that never finished. Naming
+    // it here beats failing ten megabytes into some level package later.
+    public static readonly long FragmentBytes =
+      (long)BlocksPerFile * BlockSize + ((long)BlocksPerFile / BlocksPerL0Hash) * HashBlockSize + HashBlockSize;
+
+    static void RequireWholeFragments(string[] fragments) {
+      for (int i = 0; i < fragments.Length; i++) {
+        long actual = new FileInfo(fragments[i]).Length;
+        bool last = i == fragments.Length - 1;
+        if ((!last && actual != FragmentBytes) || (last && actual > FragmentBytes) || actual == 0)
+          throw new InvalidDataException("Образ обрезан: фрагмент " + Path.GetFileName(fragments[i]) + " весит " + actual +
+            " байт вместо " + FragmentBytes + ". Распакуйте архив заново на диск, где есть место, или докачайте образ.");
+      }
+    }
+
+    /// <summary>A ZIP that carries a GOD image rather than loose game files. The
+    /// container and its fragments are unpacked once onto a drive with room,
+    /// each fragment checked against the length the archive declares, and the
+    /// result is opened like any other GOD. Returns false when the ZIP holds
+    /// something else, so the loose-file reader can have its turn.</summary>
+    public static bool TryExtractFromZip(string zipPath, Action<InstallProgress> progress, out string container, out string scratch) {
+      container = null; scratch = null;
+      using (var stream = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan))
+      using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read, false, Encoding.UTF8)) {
+        var names = archive.Entries.Select(e => e.FullName.Replace('\\', '/')).ToList();
+        string containerName = null;
+        foreach (var entry in archive.Entries) {
+          string name = entry.FullName.Replace('\\', '/');
+          if (name.EndsWith("/") || entry.Length < 0x3AD) continue;
+          string leaf = name.Substring(name.LastIndexOf('/') + 1);
+          if (leaf.IndexOf('.') >= 0) continue;
+          if (!names.Any(n => n.StartsWith(name + ".data/", StringComparison.OrdinalIgnoreCase))) continue;
+          byte[] head = new byte[4];
+          using (Stream probe = entry.Open()) { if (probe.Read(head, 0, 4) != 4) continue; }
+          if (!IsPackageMagic(head)) continue;
+          containerName = name; break;
+        }
+        if (containerName == null) return false;
+
+        var wanted = archive.Entries.Where(e => {
+          string n = e.FullName.Replace('\\', '/');
+          return !n.EndsWith("/") && (String.Equals(n, containerName, StringComparison.OrdinalIgnoreCase) ||
+            n.StartsWith(containerName + ".data/", StringComparison.OrdinalIgnoreCase));
+        }).OrderBy(e => e.FullName, StringComparer.OrdinalIgnoreCase).ToList();
+        long total = wanted.Sum(e => e.Length);
+        string key = SafeKey(Path.GetFileNameWithoutExtension(zipPath)) + "-" + new FileInfo(zipPath).Length.ToString();
+        scratch = Path.Combine(PayloadProvider.ScratchRoot(total + total / 20, "распаковка образа"), "svod", key);
+        string leafName = containerName.Substring(containerName.LastIndexOf('/') + 1);
+        container = Path.Combine(scratch, leafName);
+        string ready = Path.Combine(scratch, ".ready");
+
+        bool reusable = File.Exists(ready);
+        if (reusable) {
+          foreach (var entry in wanted) {
+            string target = Path.Combine(scratch, Relative(entry.FullName, containerName));
+            if (!File.Exists(target) || new FileInfo(target).Length != entry.Length) { reusable = false; break; }
+          }
+        }
+        if (reusable) return true;
+
+        if (Directory.Exists(scratch)) Directory.Delete(scratch, true);
+        Directory.CreateDirectory(scratch);
+        long done = 0;
+        var buffer = new byte[1 << 20];
+        foreach (var entry in wanted) {
+          string target = Path.Combine(scratch, Relative(entry.FullName, containerName));
+          Directory.CreateDirectory(Path.GetDirectoryName(target));
+          long written = 0;
+          using (Stream input = entry.Open())
+          using (var output = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 20, FileOptions.SequentialScan)) {
+            int read;
+            while ((read = input.Read(buffer, 0, buffer.Length)) > 0) {
+              output.Write(buffer, 0, read); written += read; done += read;
+              if (progress != null) progress(new InstallProgress { Phase = "Распаковка образа из архива",
+                CurrentFile = Path.GetFileName(target), CompletedBytes = done, TotalBytes = total });
+            }
+          }
+          if (written != entry.Length)
+            throw new InvalidDataException("Архив повреждён: " + entry.FullName + " распаковался в " + written +
+              " байт вместо " + entry.Length + ". Скачайте архив заново.");
+        }
+        File.WriteAllText(ready, new FileInfo(zipPath).Length.ToString(), Encoding.ASCII);
+        return true;
+      }
+    }
+
+    static string Relative(string fullName, string containerName) {
+      string name = fullName.Replace('\\', '/');
+      string parent = containerName.Substring(0, containerName.LastIndexOf('/') + 1);
+      string relative = name.StartsWith(parent, StringComparison.OrdinalIgnoreCase) ? name.Substring(parent.Length) : name;
+      return relative.Replace('/', Path.DirectorySeparatorChar);
+    }
+
+    static string SafeKey(string value) {
+      var keep = new StringBuilder();
+      foreach (char c in value) keep.Append(Char.IsLetterOrDigit(c) ? c : '_');
+      string key = keep.ToString().Trim('_');
+      return key.Length == 0 ? "image" : (key.Length > 48 ? key.Substring(0, 48) : key);
+    }
+
     public static bool TryFindContainer(string selectedPath, out string container) {
       container = null;
       if (File.Exists(selectedPath)) {
@@ -110,6 +213,7 @@ namespace EotInstaller {
       if (!Directory.Exists(dataDirectory)) throw new DirectoryNotFoundException("SVOD data directory is missing: " + dataDirectory);
       dataPaths = Directory.GetFiles(dataDirectory).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
       if (dataPaths.Length == 0) throw new InvalidDataException("The SVOD data directory is empty");
+      RequireWholeFragments(dataPaths);
       if ((features & 0x40) != 0 && HasMagic(dataPaths[0], 0x2000)) {
         layout = Layout.EnhancedGdf; baseOffset = 0;
       } else if (HasMagic(dataPaths[0], 0x12000)) {
