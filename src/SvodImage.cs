@@ -30,6 +30,8 @@ namespace EotInstaller {
     readonly string[] dataPaths;
     readonly Dictionary<string, Entry> entries = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
     readonly Layout layout;
+    // Informational only: which tool built the container, not whether we can read it.
+    public bool HasXsfMarker { get; private set; }
     readonly uint startDataBlock;
     readonly long baseOffset;
     bool disposed;
@@ -69,7 +71,12 @@ namespace EotInstaller {
       if ((features & 0x40) != 0 && HasMagic(dataPaths[0], 0x2000)) {
         layout = Layout.EnhancedGdf; baseOffset = 0;
       } else if (HasMagic(dataPaths[0], 0x12000)) {
-        if (!HasAscii(dataPaths[0], 0x2000, "XSF")) throw new InvalidDataException("Unknown SVOD XSF layout");
+        // The filesystem magic at 0x12000 is what identifies this layout; the
+        // "XSF" string at 0x2000 only says which tool built the container and
+        // plenty of perfectly readable GOD rips do not carry it. Rejecting on a
+        // missing marker turned working images away with "Unknown SVOD XSF
+        // layout", so it is recorded and ignored.
+        HasXsfMarker = HasAscii(dataPaths[0], 0x2000, "XSF");
         layout = Layout.Xsf; baseOffset = 0x10000;
       } else if (HasMagic(dataPaths[0], 0xD000)) {
         layout = Layout.SingleFile; baseOffset = 0xB000;
