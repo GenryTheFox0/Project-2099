@@ -197,6 +197,8 @@ namespace EotInstaller {
     static readonly string[] RequiredFiles = { "Default.xex", "Data/Main.pkz", "Data/BaseGameplay.pkz" };
     Dictionary<string, PatchEntry> englishPatches;
     Dictionary<string, PatchEntry> russianPatches;
+    Dictionary<string, ManifestFile> canonicalOriginal;
+    Dictionary<string, ManifestFile> canonicalRussian;
 
 #if EOT_INSTALLER_TEST
     // Answers "how far is this dump from each donor revision we know", which is the
@@ -434,9 +436,9 @@ namespace EotInstaller {
       }, cancellation);
     }
 
-    // What the dump actually is, as opposed to which revision we hoped for. The
-    // installer no longer refuses a dump it does not recognise: a file it knows
-    // gets the translation, anything else is the player's own game and is kept.
+    // Discover the actual dump without requiring a whole-image revision match.
+    // Installation separately verifies every file's route to the canonical tree;
+    // an unknown embedded-dialogue package must not silently pass through.
     List<ManifestFile> CollectSourceFiles(IGameSource source) {
       var files = new List<ManifestFile>();
       foreach (string raw in source.EnumerateFiles()) {
@@ -550,6 +552,7 @@ namespace EotInstaller {
           // Decide before writing anything: a half-translated tree is worse than
            // an English one, because the strings need the translated fonts to be
            // legible at all.
+          ValidateOriginalRoute(files);
           List<string> missing = PlanTranslation(files);
           bool translate = missing.Count == 0;
           LastUntranslatedFiles = missing;   // the receipt is written before the move, and must say this
@@ -561,15 +564,16 @@ namespace EotInstaller {
           applied["Russian"] = BuildTree("Russian", files, index, donorRoot, Path.Combine(stage, "Data", "Russian"),
             patchesRoot, translate, englishRussian, progress, cancellation, ref completed, total);
           Directory.Delete(donorRoot, true);
-          ApplyDefaultLanguage(stage, selectedLanguage, translate);
+          int effectiveLanguage = selectedLanguage == RussianLanguageId && !translate
+            ? 1 : selectedLanguage;
+          ApplyDefaultLanguage(stage, effectiveLanguage);
           ApplyUpdateSources(stage);
-          WriteReceipt(stage, source, files, revision, payload, index, applied, selectedLanguage);
+          WriteReceipt(stage, source, files, revision, payload, index, applied,
+            selectedLanguage, effectiveLanguage);
 
           cancellation.ThrowIfCancellationRequested();
           if (Directory.Exists(target)) Directory.Delete(target, false);
           Directory.Move(stage, target);
-          WriteLauncherFirstRunLanguage(translate ? selectedLanguage
-            : (selectedLanguage == RussianLanguageId ? 1 : selectedLanguage));
           LastTranslatedFiles = applied["Russian"].Count;
           LastExpectedTranslatedFiles = russianPatches.Values.Select(entry => entry.Path)
             .Distinct(StringComparer.OrdinalIgnoreCase).Count();
@@ -595,16 +599,58 @@ namespace EotInstaller {
         ManifestFile file = files.FirstOrDefault(value => SamePath(value.Path, path));
         if (file == null) { missing.Add(path); continue; }
         string hash = file.Sha256;
-        PatchEntry english = FindPatch(englishPatches, path, hash);
-        if (english != null) hash = english.TargetSha256;
-        if (FindPatch(russianPatches, path, hash) == null) missing.Add(path);
+        long size = file.Size;
+        foreach (PatchEntry english in ResolvePatchChain(englishPatches, path, hash, size)) {
+          hash = english.TargetSha256; size = english.TargetSize;
+        }
+        foreach (PatchEntry russian in ResolvePatchChain(russianPatches, path, hash, size)) {
+          hash = russian.TargetSha256; size = russian.TargetSize;
+        }
+        ManifestFile expected;
+        if (!canonicalRussian.TryGetValue(path, out expected) ||
+            !SameHash(hash, expected.Sha256) || size != expected.Size) missing.Add(path);
       }
       return missing;
     }
 
-    // One file, two possible steps: bring its text to the canonical English, then
-    // -- for the Russian tree -- apply the translation. A file nobody has a patch
-    // for is the player's own and is linked through untouched.
+    // Never label a passthrough level "Original" without checking its final hash.
+    // Level PKZs carry embedded dialogue outside the global string tables.
+    void ValidateOriginalRoute(List<ManifestFile> files) {
+      foreach (ManifestFile file in files) {
+        string hash = file.Sha256;
+        long size = file.Size;
+        foreach (PatchEntry patch in ResolvePatchChain(englishPatches, file.Path, hash, size)) {
+          hash = patch.TargetSha256; size = patch.TargetSize;
+        }
+        ManifestFile expected;
+        if (!canonicalOriginal.TryGetValue(file.Path, out expected) ||
+            !SameHash(hash, expected.Sha256) || size != expected.Size)
+          throw new InvalidDataException("Language normalization is not verified for " + file.Path +
+            " (source SHA-256 " + file.Sha256 + "). An updated payload is required; no mixed-language installation was created.");
+      }
+      foreach (string path in canonicalOriginal.Keys)
+        if (!files.Any(file => SamePath(file.Path, path)))
+          throw new InvalidDataException("Language normalization source is incomplete: " + path);
+    }
+
+    internal static List<PatchEntry> ResolvePatchChain(Dictionary<string, PatchEntry> lookup,
+      string path, string hash, long size) {
+      var result = new List<PatchEntry>();
+      var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      PatchEntry entry;
+      while ((entry = FindPatch(lookup, path, hash)) != null) {
+        if (result.Count >= 16 || !visited.Add(PatchKey(path, hash)))
+          throw new InvalidDataException("Cyclic or excessive language patch chain: " + path);
+        if (entry.SourceSize != size)
+          throw new InvalidDataException("Language patch-chain source size mismatch: " + path);
+        result.Add(entry);
+        hash = entry.TargetSha256; size = entry.TargetSize;
+      }
+      return result;
+    }
+
+    // Normalize through a bounded chain, then apply the Russian route if selected.
+    // Passthrough is allowed only when the exact final canonical hash matches.
     List<string> BuildTree(string language, List<ManifestFile> files, PatchIndex index, string donorRoot,
       string targetRoot, string patchesRoot, bool translate, List<string> englishApplied,
       Action<InstallProgress> progress, CancellationToken cancellation, ref long completed, long total) {
@@ -618,26 +664,37 @@ namespace EotInstaller {
         string hash = file.Sha256;
         string intermediate = null;
 
-        PatchEntry english = FindPatch(englishPatches, file.Path, hash);
-        if (english != null) {
-          intermediate = output + ".english";
-          ApplyPatch(english, current, intermediate, patchesRoot, cancellation);
-          current = intermediate;
+        long size = file.Size;
+        int step = 0;
+        foreach (PatchEntry english in ResolvePatchChain(englishPatches, file.Path, hash, size)) {
+          string next = output + ".english." + step++;
+          ApplyPatch(english, current, next, patchesRoot, cancellation);
+          if (intermediate != null) File.Delete(intermediate);
+          current = intermediate = next;
           hash = english.TargetSha256;
-          englishApplied.Add(file.Path);
+          size = english.TargetSize;
         }
+        if (step != 0) englishApplied.Add(file.Path);
 
-        PatchEntry russian = translate ? FindPatch(russianPatches, file.Path, hash) : null;
-        if (russian != null) {
-          string produced = output + ".russian";
+        var russianRoute = translate ? ResolvePatchChain(russianPatches, file.Path, hash, size)
+          : new List<PatchEntry>();
+        step = 0;
+        foreach (PatchEntry russian in russianRoute) {
+          string produced = output + ".russian." + step++;
           ApplyPatch(russian, current, produced, patchesRoot, cancellation);
           if (intermediate != null) File.Delete(intermediate);
-          File.Move(produced, output);
-          translated.Add(file.Path);
-          completed += russian.TargetSize;
-        } else if (intermediate != null) {
+          current = intermediate = produced;
+          hash = russian.TargetSha256; size = russian.TargetSize;
+        }
+        if (step != 0) translated.Add(file.Path);
+        ManifestFile expected;
+        var canonical = translate ? canonicalRussian : canonicalOriginal;
+        if (!canonical.TryGetValue(file.Path, out expected) ||
+            !SameHash(hash, expected.Sha256) || size != expected.Size)
+          throw new InvalidDataException(language + " final language target is not verified: " + file.Path);
+        if (intermediate != null) {
           File.Move(intermediate, output);
-          completed += english.TargetSize;
+          completed += size;
         } else {
           if (!CreateHardLink(output, donor, IntPtr.Zero)) File.Copy(donor, output, false);
           completed += file.Size;
@@ -680,11 +737,34 @@ namespace EotInstaller {
     // given sha256 becomes a given other file. It is keyed by hash, not by dump,
     // which is what lets an unknown revision install.
     void ValidatePatchIndex(PatchIndex index, string patchesRoot) {
-      if (index == null || index.Schema != 3 || index.English == null || index.Russian == null)
-        throw new InvalidDataException("Invalid patch index");
+      if (index == null || index.Schema != 4 || index.English == null || index.Russian == null ||
+          !index.CanonicalTargetsVerified || index.IndexOnlyNotInstallable)
+        throw new InvalidDataException("This payload has no verified full-language normalization (schema 4 required). Download the corrected payload; beta 1/3 language data must not be mixed with this installer.");
       englishPatches = BuildPatchLookup(index.English, "English");
       russianPatches = BuildPatchLookup(index.Russian, "Russian");
       if (russianPatches.Count == 0) throw new InvalidDataException("Patch index carries no translation");
+      canonicalOriginal = BuildCanonicalLookup(index.CanonicalOriginal, "Original");
+      canonicalRussian = BuildCanonicalLookup(index.CanonicalRussian, "Russian");
+      if (canonicalOriginal.Keys.Except(canonicalRussian.Keys, StringComparer.OrdinalIgnoreCase).Any() ||
+          canonicalRussian.Keys.Except(canonicalOriginal.Keys, StringComparer.OrdinalIgnoreCase).Any())
+        throw new InvalidDataException("Canonical language inventories differ");
+      foreach (PatchEntry entry in index.English.Concat(index.Russian)) {
+        var lookup = index.English.Contains(entry) ? englishPatches : russianPatches;
+        ResolvePatchChain(lookup, entry.Path, entry.SourceSha256, entry.SourceSize);
+      }
+    }
+
+    Dictionary<string, ManifestFile> BuildCanonicalLookup(List<ManifestFile> entries, string lane) {
+      if (entries == null || entries.Count == 0)
+        throw new InvalidDataException("Missing canonical language inventory: " + lane);
+      var result = new Dictionary<string, ManifestFile>(StringComparer.OrdinalIgnoreCase);
+      foreach (ManifestFile entry in entries) {
+        entry.Path = NormalizeRelative(entry.Path);
+        if (entry.Size < 0 || !IsSha256(entry.Sha256) || result.ContainsKey(entry.Path))
+          throw new InvalidDataException("Invalid canonical language entry: " + entry.Path);
+        result.Add(entry.Path, entry);
+      }
+      return result;
     }
 
     Dictionary<string, PatchEntry> BuildPatchLookup(List<PatchEntry> entries, string stage) {
@@ -713,7 +793,8 @@ namespace EotInstaller {
     }
 
     void WriteReceipt(string stage, IGameSource source, List<ManifestFile> files, GameManifest revision,
-      PayloadManifest payload, PatchIndex index, Dictionary<string, List<string>> applied, int selectedLanguage) {
+      PayloadManifest payload, PatchIndex index, Dictionary<string, List<string>> applied,
+      int selectedLanguage, int effectiveLanguage) {
       string directory = Path.Combine(stage, "Support", "Install");
       Directory.CreateDirectory(directory);
       var deviations = new List<string>();
@@ -748,7 +829,8 @@ namespace EotInstaller {
         TranslatableFiles = index.Russian.Select(entry => entry.Path)
           .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
         SourceDeviations = deviations.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
-        DefaultLanguage = selectedLanguage
+        DefaultLanguage = selectedLanguage,
+        EffectiveLanguage = effectiveLanguage
       });
       File.WriteAllText(Path.Combine(directory, "INSTALL_RECEIPT.json"), text, new UTF8Encoding(false));
     }
@@ -801,25 +883,15 @@ namespace EotInstaller {
       File.WriteAllText(path, document, new UTF8Encoding(false));
     }
 
-    static void ApplyDefaultLanguage(string stage, int language, bool translated) {
+    static void ApplyDefaultLanguage(string stage, int language) {
       string config = Path.Combine(stage, "spider_man_edge_of_time.toml");
-      if (!File.Exists(config)) return;
-      bool russian = language == RussianLanguageId && translated;
-      if (!russian && language == RussianLanguageId) language = 1;
+      if (!File.Exists(config)) throw new FileNotFoundException("PC Edition config missing", config);
+      bool russian = language == RussianLanguageId;
       string text = File.ReadAllText(config, Encoding.UTF8);
       text = SetTomlValue(text, "user_language", "user_language = " + language);
       text = SetTomlValue(text, "game_data_root",
         "game_data_root = '" + (russian ? "Data/Russian" : "Data/Original") + "'");
       File.WriteAllText(config, text, new UTF8Encoding(false));
-    }
-
-    void WriteLauncherFirstRunLanguage(int language) {
-      string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "spider_man_edge_of_time");
-      string settings = Path.Combine(directory, "launcher_settings.json");
-      if (File.Exists(settings)) return;
-      Directory.CreateDirectory(directory);
-      string text = json.Serialize(new { Language = language });
-      File.WriteAllText(settings, text, new UTF8Encoding(false));
     }
 
     static string SafeJoin(string root, string relative) {

@@ -1,3 +1,5 @@
+> Исторические заметки V2 BETA 1. Для V2 BETA 4, исправленных языковых пакетов и актуального состава менеджера модов см. [RELEASE_NOTES_BETA4_RU.md](RELEASE_NOTES_BETA4_RU.md). Описанная ниже конвертация PS3/Wii не входит в Beta 4.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/GenryTheFox0/Project-2099/main/assets/brand/project2099_logo_transparent_v2.png" width="900" alt="Project 2099: На грани времени">
 </p>

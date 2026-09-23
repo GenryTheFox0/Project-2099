@@ -5,10 +5,38 @@ param(
   [Parameter(Mandatory=$true)][string]$AlternateGodRoot,
   [Parameter(Mandatory=$true)][string]$UsaEuropeRoot,
   [Parameter(Mandatory=$true)][string]$UsaEuropeR2Root,
-  [Parameter(Mandatory=$true)][string]$SazanOffRoot
+  [Parameter(Mandatory=$true)][string]$SazanOffRoot,
+  [string]$ExpectedOriginalManifest='',
+  [string]$ExpectedRussianManifest='',
+  [string]$OriginalCorrections='',
+  [string]$RussianCorrections='',
+  [switch]$ValidateOnly
 )
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
+# Fail before a build or any payload mutation. Historical thirteen-file indices
+# and unverified "Original" trees must not silently become a new release.
+$proofInputs=@{
+  ExpectedOriginalManifest=$ExpectedOriginalManifest
+  ExpectedRussianManifest=$ExpectedRussianManifest
+  OriginalCorrections=$OriginalCorrections
+  RussianCorrections=$RussianCorrections
+}
+foreach($name in $proofInputs.Keys){
+  $value=$proofInputs[$name]
+  if([String]::IsNullOrWhiteSpace($value)){
+    throw "Schema 4 payload requires -$name; no payload files were changed. Supply verified canonical manifests and both correction manifests."
+  }
+  if(-not(Test-Path -LiteralPath $value -PathType Leaf)){throw "Missing schema 4 input: $name = $value"}
+  $proofFull=[IO.Path]::GetFullPath($value)
+  foreach($generatedRoot in @((Join-Path $root 'payload'),(Join-Path $root 'patchsets'))){
+    if($proofFull.StartsWith([IO.Path]::GetFullPath($generatedRoot).TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)){
+      throw "Schema 4 proof inputs must be outside regenerated payload/patchsets: $proofFull"
+    }
+  }
+  $proof=Get-Content -LiteralPath $proofFull -Raw -Encoding UTF8 | ConvertFrom-Json
+  if($null -eq $proof.Files -or @($proof.Files).Count -eq 0){throw "Empty or invalid schema 4 manifest: $proofFull"}
+}
 $release=[IO.Path]::GetFullPath($ReleaseRoot)
 $original=[IO.Path]::GetFullPath($OriginalRoot)
 $russian=[IO.Path]::GetFullPath($RussianRoot)
@@ -32,16 +60,26 @@ if(-not(Test-Path -LiteralPath "$alternate\Default.xex")){throw 'AlternateGodRoo
 if(-not(Test-Path -LiteralPath "$usa\Default.xex")){throw 'UsaEuropeRoot has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$usaR2\Default.xex")){throw 'UsaEuropeR2Root has no Default.xex'}
 if(-not(Test-Path -LiteralPath "$sazan\Default.xex")){throw 'SazanOffRoot has no Default.xex'}
+if($ValidateOnly){Write-Output 'PASS: schema 4 inputs and source roots present; no payload files were changed';return}
 
 & "$root\build_tools.ps1"
 if($LASTEXITCODE){throw 'Tool build failed'}
 
-foreach($generated in @($port,$patches,$sets)){
+# Validate every cleanup target before touching either one. patchsets is a build
+# input tree outside payload and must not be deleted as though it were a cache.
+foreach($generated in @($port,$patches)){
   $full=[IO.Path]::GetFullPath($generated)
-  if(-not $full.StartsWith([IO.Path]::GetFullPath($payload),[StringComparison]::OrdinalIgnoreCase)){throw "Unsafe generated path: $full"}
+  if(-not $full.StartsWith([IO.Path]::GetFullPath($payload).TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)){throw "Unsafe generated path: $full"}
+  if((Test-Path -LiteralPath $full) -and ((Get-Item -LiteralPath $full).Attributes -band [IO.FileAttributes]::ReparsePoint)){
+    throw "Generated payload target is a link: $full"
+  }
+}
+foreach($generated in @($port,$patches)){
+  $full=[IO.Path]::GetFullPath($generated)
   if(Test-Path -LiteralPath $full){Remove-Item -LiteralPath $full -Recurse -Force}
   New-Item -ItemType Directory -Force -Path $full | Out-Null
 }
+New-Item -ItemType Directory -Force -Path $sets | Out-Null
 
 $releasePrefix=$release.TrimEnd('\')+'\'
 foreach($file in Get-ChildItem -LiteralPath $release -Recurse -File){
@@ -104,7 +142,9 @@ if($LASTEXITCODE){throw 'SazanOFF Russian delta generation failed'}
 
 # Everything above is per-image. This turns it into what actually ships: one
 # index keyed by file hash, with each delta stored once.
-& python "$root\tools\build_patch_index.py"
+& python "$root\tools\build_patch_index.py" --root $root --output $patches `
+  --expected-original $ExpectedOriginalManifest --expected-russian $ExpectedRussianManifest `
+  --original-corrections $OriginalCorrections --russian-corrections $RussianCorrections
 if($LASTEXITCODE){throw 'Patch index generation failed'}
 if(-not(Test-Path -LiteralPath "$patches\index.json")){throw 'Patch index was not produced'}
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Teach the installer a new dump from the thirteen files that carry text.
+"""Legacy schema-3 revision helper; must not modify verified schema-4 packages.
 
 When someone's dump cannot be translated, the installer writes their file
 hashes into Support/Install/INSTALL_RECEIPT.json and installs in English. All
@@ -48,13 +48,17 @@ def main():
     parser.add_argument('--dry-run', action='store_true')
     options = parser.parse_args()
 
+    index = load(INDEX)
+    if index.get('Schema') != 3:
+        raise SystemExit('Legacy add_revision.py cannot modify schema 4 canonical proofs or chained patches. '
+                         'Add the donor to patchsets and rebuild with build_patch_index.py, verified '
+                         '--expected-original/--expected-russian and both correction manifests. Index unchanged.')
     english_root = options.english or os.environ.get('EOT_ORIGINAL_ROOT')
     if not english_root or not os.path.isfile(os.path.join(english_root, 'Default.xex')):
         raise SystemExit('нужна эталонная английская дорожка: --english <...>\\Data\\Original')
     if not os.path.isfile(BUILDER):
         raise SystemExit('нет %s — собери инструменты: powershell -File build_tools.ps1' % BUILDER)
 
-    index = load(INDEX)
     english_known = set((e['Path'].lower(), e['SourceSha256'].upper()) for e in index['English'])
     canonical = {}
     for entry in index['Russian']:

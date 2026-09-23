@@ -8,20 +8,20 @@
 
 Pour une installation en ligne normale, téléchargez uniquement :
 
-- `EOTInstaller-v1.0.0-beta.3.exe`
+- `EOTInstaller-v2.0.0-beta.4.exe`
 
-L'installateur télécharge automatiquement `EOT-PC-Payload-v1.0.0-beta.3.zip`, reprend un transfert interrompu et vérifie sa taille ainsi que son SHA-256 avant l'extraction.
+L'installateur télécharge automatiquement `EOT-PC-Payload-v2.0.0-beta.4.zip`, reprend un transfert interrompu et vérifie sa taille ainsi que son SHA-256 avant l'extraction.
 
 Les autres fichiers de la release :
 
-- `EOT-PC-Payload-v1.0.0-beta.3.zip` — composants et correctifs de la PC Edition ; son téléchargement manuel est inutile pour l'installation normale ;
+- `EOT-PC-Payload-v2.0.0-beta.4.zip` — composants et correctifs de la PC Edition ; son téléchargement manuel est inutile pour l'installation normale ;
 - `SHA256SUMS.txt` — sommes de contrôle de l'installateur et du payload ;
 - `release-manifest.json` — version, tailles, hachages et sources prises en charge ;
 - `Source code` — code source de l'installateur, pas une copie jouable du jeu.
 
 ## Installation normale
 
-1. Téléchargez `EOTInstaller-v1.0.0-beta.3.exe` depuis la [release officielle du projet](https://github.com/GenryTheFox0/Project-2099/releases/tag/v1.0.0-beta.3).
+1. Téléchargez `EOTInstaller-v2.0.0-beta.4.exe` depuis la [release officielle du projet](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4).
 2. Lancez l'installateur.
 3. Choisissez la langue de l'assistant et du jeu.
 4. Attendez le téléchargement et la vérification des composants de la PC Edition.
@@ -41,21 +41,21 @@ Une fois l'installation terminée, l'ISO, le GOD ou le dossier console extrait n
 ## Installation hors ligne
 
 1. Téléchargez les deux fichiers :
-   - `EOTInstaller-v1.0.0-beta.3.exe` ;
-   - `EOT-PC-Payload-v1.0.0-beta.3.zip`.
+   - `EOTInstaller-v2.0.0-beta.4.exe` ;
+   - `EOT-PC-Payload-v2.0.0-beta.4.zip`.
 2. Créez un dossier réservé à l'installateur.
-3. Extrayez le ZIP à côté de l'EXE afin d'obtenir :
+3. Vous pouvez laisser le ZIP à côté de l'EXE sans l'extraire. Si vous l'extrayez, la structure est :
 
 ```text
 EOT GitHub Installer\
-├── EOTInstaller-v1.0.0-beta.3.exe
+├── EOTInstaller-v2.0.0-beta.4.exe
 └── payload\
     ├── payload-manifest.json
     ├── port\
     └── patches\
 ```
 
-4. Lancez l'EXE. L'installateur détecte et vérifie le dossier local `payload` sans retélécharger l'archive.
+4. Lancez l'EXE. L'installateur détecte et vérifie le ZIP ou le dossier local `payload` sans retélécharger l'archive.
 
 Ne renommez pas `payload` et ne déplacez pas ses fichiers internes hors de leur arborescence.
 
@@ -64,8 +64,10 @@ Les ISO et ZIP peuvent être choisis directement. Pour un dossier, l’installat
 ## Sources prises en charge
 
 - `usa-europe-retail` — version retail USA/Europe Xbox 360 courante en ISO/ZIP ;
+- `usa-europe-retail-r2` — seconde révision retail USA/Europe connue ;
 - `eu-retail` — ancienne base multilingue de la PC Edition conservée pour compatibilité ;
-- `ru-god-alt` — version russe alternative GOD/LIVE/XSF testée.
+- `ru-god-alt` — version russe alternative GOD/LIVE/XSF testée ;
+- `sazanoff-rus-god` — GOD RUS Region Free (SazanOFF v1.0b).
 
 Une extension ou un en-tête `LIVE`, `PIRS` ou `CON` ne suffit pas. L'installateur vérifie les tailles réelles et les SHA-256. Les versions inconnues, mélangées ou modifiées sont refusées afin d'éviter une installation corrompue.
 
@@ -102,12 +104,10 @@ Le jeu n'utilise plus ce cache après une installation réussie. Gardez-le pour 
 L'installateur n'est pas encore signé avec un certificat commercial. Windows SmartScreen peut donc afficher un avertissement. Téléchargez-le uniquement depuis cette release GitHub et vérifiez-le si nécessaire :
 
 ```powershell
-Get-FileHash .\EOTInstaller-v1.0.0-beta.3.exe -Algorithm SHA256
+Get-FileHash .\EOTInstaller-v2.0.0-beta.4.exe -Algorithm SHA256
 ```
 
-Installateur : `C0462B2C31F841DF0323DE6226EA5CB4E451C85EBF4C29F77974887CF1F8E5FF`
-
-Payload : `13B88F7F6B26D00D97290707008986D7E9A25ED91F2458D50BA631D654EA804D`
+Comparez le résultat au fichier `SHA256SUMS.txt` joint à cette même release Beta 4. Les sommes des versions précédentes ne s'appliquent pas.
 
 ## En cas de problème
 
@@ -122,7 +122,7 @@ Payload : `13B88F7F6B26D00D97290707008986D7E9A25ED91F2458D50BA631D654EA804D`
 .\SpiderManEOT.exe --verify-install
 ```
 
-## Problèmes connus de la V1 Beta
+## Limites connues
 
 - micro-saccades pendant certaines transitions ;
 - blocages sévères occasionnels ;

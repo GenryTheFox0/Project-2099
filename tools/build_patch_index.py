@@ -1,128 +1,221 @@
 # -*- coding: utf-8 -*-
-"""Turn the per-image patch sets into one index keyed by file hash.
+"""Preserve ALL normalization deltas, including embedded level subtitles.
 
-A delta only ever says "a file with THIS sha256 becomes THAT one". Tying a whole
-dump to a named revision was the mistake: every new dump needed its own set, and
-a dump that differed only in level packages was refused outright.
-
-Two observations collapse the whole thing:
-
-  * only thirteen files carry text. Every other difference between dumps is a
-    level package, and one revision's level package is as good as another's --
-    it is the same level. Those deltas are pure weight.
-  * the translation is one piece of work, not one per dump. Bring a dump's text
-    files to the canonical English first, and a single Russian set then serves
-    every dump that exists.
-
-So the index has two stages: English (anything -> canonical English text) and
-Russian (canonical English -> the translation), each keyed by source hash, with
-every delta stored once by content.
+A small Russian patch set is not an inventory of text-bearing packages.
+Historical 'Original' targets can themselves be contaminated: full coverage
+alone is not proof that a package is safe to release.
 """
-import io
+import argparse
+import hashlib
 import json
 import os
 import shutil
+from pathlib import Path
 
-BASE = 'D:/EOT_PC_FEATURES_20260905/EOTGitHubInstaller'
-SETS = os.path.join(BASE, 'patchsets')
-PATCHES = os.path.join(BASE, 'payload/patches')
-OUT_DATA = os.path.join(PATCHES, 'data')
-VARIANTS = ['eu-retail', 'usa-europe-retail', 'usa-europe-retail-r2', 'ru-god-alt', 'sazanoff-rus-god']
+BASE = Path(__file__).resolve().parents[1]
+VARIANTS = ('eu-retail', 'usa-europe-retail', 'usa-europe-retail-r2',
+            'ru-god-alt', 'sazanoff-rus-god')
+MANIFEST_NAMES = dict(zip(VARIANTS, ('eu', 'usa-europe', 'usa-europe-r2', 'ru-god', 'sazanoff')))
 
 
 def load(path):
-    return json.load(io.open(path, encoding='utf-8-sig'))
+    with open(path, encoding='utf-8-sig') as handle:
+        return json.load(handle)
 
 
-def store(patch, variant, kept):
-    """Copy a delta into the content-addressed pool; return its stored name."""
-    stored = 'data/' + patch['DeltaSha256'].lower() + '.eotp'
-    target = os.path.join(PATCHES, stored.replace('/', os.sep))
-    if not os.path.exists(target):
-        if not os.path.isdir(OUT_DATA):
-            os.makedirs(OUT_DATA)
-        shutil.copyfile(os.path.join(SETS, variant, patch['Delta'].replace('/', os.sep)), target)
-        kept[0] += patch['DeltaSize']
-    return stored
+def key(path, digest):
+    return path.replace('\\', '/').lower(), digest.upper()
 
 
-def entry(patch, stored):
-    return {
-        'Path': patch['Path'],
-        'SourceSize': patch['SourceSize'], 'SourceSha256': patch['SourceSha256'],
-        'TargetSize': patch['TargetSize'], 'TargetSha256': patch['TargetSha256'],
-        'Delta': stored, 'DeltaSize': patch['DeltaSize'], 'DeltaSha256': patch['DeltaSha256'],
-    }
+def targets(manifest):
+    result = {}
+    for item in manifest['Files']:
+        path = item['Path'].replace('\\', '/').lower()
+        if path in result:
+            raise ValueError('Duplicate canonical path: ' + path)
+        result[path] = item['Sha256'].upper(), item['Size']
+    return result
+
+
+def validate_coverage(index, sets):
+    """Missing a known level normalization must fail, not claim completeness."""
+    lookup = {key(e['Path'], e['SourceSha256']): e for e in index['English']}
+    for variant, lanes in sets.items():
+        for patch in lanes['original']:
+            found = lookup.get(key(patch['Path'], patch['SourceSha256']))
+            if found is None or (found['TargetSha256'].upper(), found['TargetSize']) != (
+                    patch['TargetSha256'].upper(), patch['TargetSize']):
+                raise ValueError('Missing normalization: %s / %s' % (variant, patch['Path']))
+
+
+def route(lookup, path, digest, size):
+    visited = set()
+    while True:
+        identity = key(path, digest)
+        patch = lookup.get(identity)
+        if patch is None:
+            return digest.upper(), size
+        if identity in visited or len(visited) >= 16:
+            raise ValueError('Cyclic or excessive patch chain: ' + path)
+        visited.add(identity)
+        if patch['SourceSize'] != size:
+            raise ValueError('Patch-chain source size mismatch: ' + path)
+        digest, size = patch['TargetSha256'].upper(), patch['TargetSize']
+
+
+def build_index(sets, expected_original=None, expected_russian=None, source_manifests=None,
+                corrections=None):
+    if bool(expected_original) != bool(expected_russian):
+        raise ValueError('Both canonical manifests are required')
+    index = {'Schema': 4, 'CanonicalTargetsVerified': False, 'English': [], 'Russian': []}
+    owners, seen = {}, {}
+    for variant, lanes in sets.items():
+        # No filename whitelist: level packages also carry dialogue.
+        for patch in lanes['original']:
+            identity = key(patch['Path'], patch['SourceSha256'])
+            if identity in seen:
+                old = seen[identity]
+                if (old['TargetSha256'].upper(), old['TargetSize']) != (
+                        patch['TargetSha256'].upper(), patch['TargetSize']):
+                    raise ValueError('Conflicting normalization target: ' + patch['Path'])
+                continue
+            seen[identity] = patch
+            index['English'].append(dict(patch))
+            owners[('English', identity)] = variant, patch['Delta']
+    for patch in sets['eu-retail']['russian']:
+        identity = key(patch['Path'], patch['SourceSha256'])
+        if ('Russian', identity) in owners:
+            raise ValueError('Duplicate Russian transformation: ' + patch['Path'])
+        index['Russian'].append(dict(patch))
+        owners[('Russian', identity)] = 'eu-retail', patch['Delta']
+    for stage, bundle in (corrections or {}).items():
+        if stage not in ('English', 'Russian'):
+            raise ValueError('Unknown correction stage: ' + stage)
+        for patch in bundle['Files']:
+            identity = key(patch['Path'], patch['SourceSha256'])
+            if (stage, identity) in owners:
+                old = next(e for e in index[stage]
+                           if key(e['Path'], e['SourceSha256']) == identity)
+                if (old['SourceSize'], old['TargetSha256'].upper(), old['TargetSize']) != (
+                        patch['SourceSize'], patch['TargetSha256'].upper(), patch['TargetSize']):
+                    raise ValueError('Conflicting corrective transformation: ' + patch['Path'])
+                # Rebuilding per-image sets from an already repaired Original
+                # tree can also produce this exact correction. Store it once.
+                continue
+            index[stage].append(dict(patch))
+            owners[(stage, identity)] = bundle['Root'], patch['Delta']
+    validate_coverage(index, sets)
+    english_lookup = {key(e['Path'], e['SourceSha256']): e for e in index['English']}
+    russian_lookup = {key(e['Path'], e['SourceSha256']): e for e in index['Russian']}
+    for stage, lookup in (('English', english_lookup), ('Russian', russian_lookup)):
+        for patch in index[stage]:
+            route(lookup, patch['Path'], patch['SourceSha256'], patch['SourceSize'])
+    canonical = {e['Path'].lower(): e['SourceSha256'].upper() for e in index['Russian']}
+    for patch in index['English']:
+        wanted = canonical.get(patch['Path'].lower())
+        final_hash, _ = route(english_lookup, patch['Path'], patch['SourceSha256'], patch['SourceSize'])
+        if wanted and wanted != final_hash:
+            raise ValueError('English target is not a Russian-stage source: ' + patch['Path'])
+
+    if expected_original:
+        original, russian = targets(expected_original), targets(expected_russian)
+        for stage, expected in (('English', original), ('Russian', russian)):
+            for patch in index[stage]:
+                lookup = english_lookup if stage == 'English' else russian_lookup
+                if expected.get(patch['Path'].lower()) != route(
+                        lookup, patch['Path'], patch['SourceSha256'], patch['SourceSize']):
+                    raise ValueError('Unverified %s target: %s' % (stage, patch['Path']))
+        if not source_manifests or set(source_manifests) != set(sets):
+            raise ValueError('A source manifest for every variant is required')
+        for variant, manifest in source_manifests.items():
+            source = targets(manifest)
+            for path, (digest, size) in source.items():
+                digest, size = route(english_lookup, path, digest, size)
+                if original.get(path) != (digest, size):
+                    raise ValueError('Unverified Original passthrough: %s / %s' % (variant, path))
+                digest, size = route(russian_lookup, path, digest, size)
+                if russian.get(path) != (digest, size):
+                    raise ValueError('Unverified Russian passthrough: %s / %s' % (variant, path))
+            if set(source) != set(original) or set(original) != set(russian):
+                raise ValueError('Canonical/source file inventory differs: ' + variant)
+        index['CanonicalTargetsVerified'] = True
+        index['CanonicalOriginal'] = expected_original['Files']
+        index['CanonicalRussian'] = expected_russian['Files']
+    for stage in ('English', 'Russian'):
+        index[stage].sort(key=lambda e: key(e['Path'], e['SourceSha256']))
+    return index, owners
+
+
+def store_index(index, owners, sets_root, output, index_only=False):
+    output.mkdir(parents=True, exist_ok=True)
+    # Do not erase the pool before validation, nor trust existing filenames.
+    for stage in ('English', 'Russian'):
+        for patch in index[stage]:
+            variant, relative = owners[(stage, key(patch['Path'], patch['SourceSha256']))]
+            source = sets_root / variant / relative
+            stored = 'data/' + patch['DeltaSha256'].lower() + '.eotp'
+            if not index_only:
+                destination = output / stored
+                check = destination if destination.exists() else source
+                if check.stat().st_size != patch['DeltaSize']:
+                    raise ValueError('Delta size mismatch: ' + str(check))
+                digest = hashlib.sha256()
+                with check.open('rb') as handle:
+                    for chunk in iter(lambda: handle.read(4 << 20), b''):
+                        digest.update(chunk)
+                if digest.hexdigest().upper() != patch['DeltaSha256'].upper():
+                    raise ValueError('Delta hash mismatch: ' + str(check))
+                if check == source:
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(source, destination)
+            patch['Delta'] = stored
+    if index_only:
+        index['IndexOnlyNotInstallable'] = True
+    temporary = output / 'index.json.pending'
+    temporary.write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(temporary), str(output / 'index.json'))
 
 
 def main():
-    # eu-retail needs no normalisation at all, so its own files define canonical
-    # English and its Russian set defines what the translation touches.
-    russian_base = load(os.path.join(SETS, 'eu-retail/russian.json'))['Files']
-    text_paths = set(f['Path'].lower() for f in russian_base)
-    assert not load(os.path.join(SETS, 'eu-retail/original.json'))['Files'], 'eu-retail is not canonical'
-    print('текстовых файлов: %d' % len(text_paths))
-
-    kept = [0]
-    index = {'Schema': 3, 'English': [], 'Russian': []}
-    seen = {}
-    dropped = dropped_bytes = 0
-
-    for variant in VARIANTS:
-        for patch in load(os.path.join(SETS, variant, 'original.json'))['Files']:
-            path = patch['Path'].lower()
-            if path not in text_paths and path != 'default.xex':
-                dropped += 1
-                dropped_bytes += patch['DeltaSize']
-                continue
-            key = ('English', path, patch['SourceSha256'].lower())
-            if key in seen:
-                assert seen[key] == patch['TargetSha256'].lower(), key
-                continue
-            seen[key] = patch['TargetSha256'].lower()
-            index['English'].append(entry(patch, store(patch, variant, kept)))
-        # every other variant's Russian set is the same translation reached from
-        # a different starting point -- the English stage already covers that.
-        for patch in load(os.path.join(SETS, variant, 'russian.json'))['Files']:
-            if variant != 'eu-retail':
-                dropped += 1
-                dropped_bytes += patch['DeltaSize']
-                continue
-            index['Russian'].append(entry(patch, store(patch, variant, kept)))
-
-    canonical = dict((e['Path'].lower(), e['SourceSha256'].lower()) for e in index['Russian'])
-    for item in index['English']:
-        path = item['Path'].lower()
-        if path in canonical and item['TargetSha256'].lower() != canonical[path]:
-            raise SystemExit('английская цель для %s не канонична' % item['Path'])
-
-    for stage in ('English', 'Russian'):
-        index[stage].sort(key=lambda e: (e['Path'].lower(), e['SourceSha256']))
-        print('%-8s записей: %2d' % (stage, len(index[stage])))
-    print('отброшено (нормализация уровней и лишние русские наборы): %d, %.1f МБ'
-          % (dropped, dropped_bytes / 1048576.0))
-    print('уникальных дельт: %.1f МБ' % (kept[0] / 1048576.0))
-
-    # which dumps are fully covered, purely as a report
-    for variant in VARIANTS:
-        manifest = load(os.path.join(BASE, 'manifests/source-manifest-%s.json' % {
-            'eu-retail': 'eu', 'usa-europe-retail': 'usa-europe', 'usa-europe-retail-r2': 'usa-europe-r2',
-            'ru-god-alt': 'ru-god', 'sazanoff-rus-god': 'sazanoff'}[variant]))
-        have = dict((f['Path'].lower(), f['Sha256'].lower()) for f in manifest['Files'])
-        english = dict(((e['Path'].lower(), e['SourceSha256'].lower()), e['TargetSha256'].lower())
-                       for e in index['English'])
-        russian = set((e['Path'].lower(), e['SourceSha256'].lower()) for e in index['Russian'])
-        ok = 0
-        for path in sorted(text_paths):
-            sha = have.get(path)
-            sha = english.get((path, sha), sha)
-            if (path, sha) in russian:
-                ok += 1
-        print('  %-22s русский текст собирается для %2d из %d файлов' % (variant, ok, len(text_paths)))
-
-    io.open(os.path.join(PATCHES, 'index.json'), 'w', encoding='utf-8').write(
-        json.dumps(index, ensure_ascii=False, separators=(',', ':')))
-    print('написан index.json')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=BASE)
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--expected-original', type=Path)
+    parser.add_argument('--expected-russian', type=Path)
+    parser.add_argument('--original-corrections', type=Path,
+                        help='Extra historical-target to corrected-Original deltas')
+    parser.add_argument('--russian-corrections', type=Path,
+                        help='Corrected-Original to preserved-Russian deltas')
+    parser.add_argument('--allow-unverified-targets', action='store_true',
+                        help='QA only: old target hashes may encode contaminated text')
+    parser.add_argument('--index-only', action='store_true', help='QA report, not installable')
+    options = parser.parse_args()
+    live = (options.root / 'payload/patches').resolve()
+    output = (options.output or live).resolve()
+    if not options.expected_original or not options.expected_russian:
+        if not options.allow_unverified_targets or output == live:
+            parser.error('Supply independently verified --expected-original and --expected-russian; '
+                         'unverified QA output must use a separate --output directory')
+    if options.index_only and output == live:
+        parser.error('--index-only must use an isolated --output directory')
+    sets_root = options.root / 'patchsets'
+    sets = {v: {lane: load(sets_root / v / (lane + '.json'))['Files']
+                for lane in ('original', 'russian')} for v in VARIANTS}
+    sources = {v: load(options.root / 'manifests' /
+                      ('source-manifest-' + MANIFEST_NAMES[v] + '.json')) for v in VARIANTS}
+    corrections = {}
+    for stage, path in (('English', options.original_corrections), ('Russian', options.russian_corrections)):
+        if path:
+            corrections[stage] = load(path)
+            corrections[stage]['Root'] = str(path.resolve().parent)
+    index, owners = build_index(sets,
+        expected_original=load(options.expected_original) if options.expected_original else None,
+        expected_russian=load(options.expected_russian) if options.expected_russian else None,
+        source_manifests=sources, corrections=corrections)
+    store_index(index, owners, sets_root, output, options.index_only)
+    print('English: %d; Russian: %d; canonical targets verified: %s' %
+          (len(index['English']), len(index['Russian']), index['CanonicalTargetsVerified']))
+    print('WROTE ' + str(output / 'index.json'))
 
 
 if __name__ == '__main__':

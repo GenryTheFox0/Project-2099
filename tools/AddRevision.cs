@@ -43,12 +43,15 @@ static class AddRevision {
     string patches = Path.Combine(root, @"payload\patches");
     string indexPath = Path.Combine(patches, "index.json");
     string builder = Path.Combine(root, @"build\tools\BuildEotpPatches.exe");
+    var index = Json.Deserialize<PatchIndex>(File.ReadAllText(indexPath, Encoding.UTF8));
+    if (index.Schema != 3)
+      throw new InvalidDataException("Legacy AddRevision cannot modify schema 4 canonical proofs or chained patches. " +
+        "Add the donor to patchsets and use build_patch_index.py with verified canonical and correction manifests. Index unchanged.");
     if (!File.Exists(Path.Combine(english, "Default.xex")))
       throw new Exception("That is not the canonical English tree: " + english);
     if (!File.Exists(builder))
       throw new Exception("Build the tools first (build_tools.ps1): " + builder);
 
-    var index = Json.Deserialize<PatchIndex>(File.ReadAllText(indexPath, Encoding.UTF8));
     var known = new HashSet<string>(index.English.Select(e => e.Path.ToLowerInvariant() + "|" + e.SourceSha256.ToUpperInvariant()));
     var canonical = index.Russian.ToDictionary(e => e.Path.ToLowerInvariant(), e => e.SourceSha256, StringComparer.OrdinalIgnoreCase);
 

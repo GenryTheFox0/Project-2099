@@ -1,4 +1,4 @@
-param([string]$OutDir='')
+param([string]$OutDir='', [switch]$OfflineCandidate, [string]$ChannelFile='')
 $ErrorActionPreference='Stop'
 $root=$PSScriptRoot
 $build=if([String]::IsNullOrWhiteSpace($OutDir)){Join-Path $root 'build'}else{[IO.Path]::GetFullPath($OutDir)}
@@ -28,8 +28,10 @@ foreach($reference in $references){$common+="/reference:$reference"}
 $compression=@('System.IO.Compression.dll','System.IO.Compression.FileSystem.dll')|ForEach-Object{Join-Path $fx $_}
 foreach($reference in $compression){$common+="/reference:$reference"}
 $common+="/reference:$fx\System.Net.Http.dll"
-$channel=Join-Path $root 'manifests\release-channel.json'
-if(Test-Path -LiteralPath $channel){$common+="/resource:$channel,EOT.release-channel.json"}
+$channel=if([String]::IsNullOrWhiteSpace($ChannelFile)){Join-Path $root 'manifests\release-channel.json'}else{[IO.Path]::GetFullPath($ChannelFile)}
+if($OfflineCandidate -and $ChannelFile){throw 'OfflineCandidate and ChannelFile cannot be combined'}
+if($ChannelFile -and -not(Test-Path -LiteralPath $channel -PathType Leaf)){throw "Release channel not found: $channel"}
+if(-not $OfflineCandidate -and (Test-Path -LiteralPath $channel)){$common+="/resource:$channel,EOT.release-channel.json"}
 $sources=@('AssemblyInfo.cs','Program.cs','Models.cs','XdvdfsImage.cs','SvodImage.cs','EotpPatch.cs','PayloadProvider.cs','InstallerCore.cs','InstallerWindow.cs')|ForEach-Object{Join-Path "$root\src" $_}
 & $csc /target:winexe "/out:$build\EOTInstaller.exe" @common @sources
 if($LASTEXITCODE){throw 'EOTInstaller compilation failed'}

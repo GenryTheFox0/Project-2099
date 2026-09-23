@@ -9,4 +9,4 @@ Choose your language:
 - [Italiano](INSTALL_IT.md)
 - [Español](INSTALL_ES.md)
 
-All six guides describe the same `v1.0.0-beta.3` installer, supported Xbox 360 sources, online and offline installation, controls, file verification and current V1 Beta limitations.
+All six guides describe the `v2.0.0-beta.4` installer, supported Xbox 360 sources, online and offline installation, controls, file verification and known limitations. Use the [direct Beta 4 release page](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4), because a prerelease may not appear under “latest.”

@@ -52,6 +52,10 @@ namespace EotInstaller {
   // turns that into the translation.
   public sealed class PatchIndex {
     public int Schema;
+    public bool CanonicalTargetsVerified;
+    public bool IndexOnlyNotInstallable;
+    public List<ManifestFile> CanonicalOriginal = new List<ManifestFile>();
+    public List<ManifestFile> CanonicalRussian = new List<ManifestFile>();
     public List<PatchEntry> English = new List<PatchEntry>();
     public List<PatchEntry> Russian = new List<PatchEntry>();
   }

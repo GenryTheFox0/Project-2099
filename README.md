@@ -6,10 +6,10 @@
 <p align="center"><strong>Две эпохи. Один полноценный PC-порт.</strong><br>Two eras. One proper PC port.</p>
 
 <p align="center">
-  <a href="https://github.com/GenryTheFox0/Project-2099/releases">Public downloads</a> ·
+  <a href="https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4">V2 BETA 4 download</a> ·
   <a href="#installation">Installation</a> ·
   <a href="INSTALLATION.md">Six-language guides</a> ·
-  <a href="PROJECT_2099_V2_BETA1_TEST.md">V2 test build</a> ·
+  <a href="RELEASE_NOTES_BETA4_RU.md">V2 BETA 4</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
   <a href="https://discord.gg/vrCTtBgjt">Discord</a>
@@ -17,18 +17,18 @@
 
 ## Коротко по-русски
 
-**Project 2099** — независимый Windows-порт *Spider-Man: Edge of Time (2011)*, собранный из Xbox 360-версии через ReXGlue. Это не ярлык для эмулятора и не архив с сотней BAT-файлов: проект добавляет собственный установщик, лаунчер, клавиатуру и мышь, PC-настройки, шесть языков, локальные достижения, графические исправления и менеджер модов.
+**Project 2099** — независимый Windows-порт *Spider-Man: Edge of Time (2011)*, собранный из Xbox 360-версии через ReXGlue. Это не ярлык для эмулятора и не архив с сотней BAT-файлов: проект добавляет собственный установщик, лаунчер, клавиатуру и мышь, PC-настройки, шесть языков, локальные достижения и графические исправления.
 
 Игровые данные в репозитории не лежат. Пользователь указывает совместимую собственную копию Xbox 360-игры — **ISO, ZIP, распакованную папку или поддерживаемый GOD/SVOD** — а установщик проверяет источник и собирает готовую PC Edition.
 
-**V2 BETA 1** уже собрана как проверяемый релизный кандидат. Пока файлы не загружены в публичный Release и не скачаны обратно анонимным пользователем с совпавшими SHA-256, это всё ещё тестовая сборка, а не обещание «у всех всё идеально». Подробности — в [описании V2](PROJECT_2099_V2_BETA1_TEST.md) и [заметках выпуска](RELEASE_NOTES_RU.md).
+**V2 BETA 4** включает исправленные языковые пакеты и установщик. Подробности — в [заметках Beta 4](RELEASE_NOTES_BETA4_RU.md) и [инструкции публикации](PUBLISH_BETA4_RU.md). Скачивайте файлы с [прямой страницы выпуска](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4) и проверяйте их по `SHA256SUMS.txt` из того же выпуска.
 
 ### Что нового в V2
 
 - **Установщик на одном экране:** ISO/ZIP/папку можно выбрать или бросить мышкой в окно; payload можно скачать, указать вручную либо положить рядом для полностью офлайн-установки. Старая тупиковая ошибка 404 больше не должна блокировать установку.
 - **Нормальные PC-настройки:** разрешения от 720p до 4K-вывода, окно/полный экран, VSync, 30/60/75/120 FPS, монитор, GPU, анизотропия до 16×, детализация текстур вдали, аудиобуфер, язык, мышь, геймпад и переназначение клавиш. Внутреннее масштабирование выше родного пока честно помечено экспериментальным.
 - **Профили настроек:** выбранную графику, управление, звук и язык можно сохранить в отдельный JSON и перенести на другую установку без сейвов и игровых файлов.
-- **Менеджер модов:** принимает ZIP/7Z/RAR, папки и совместимые `.pak`, `.pkz`, `.png`; показывает порядок и конфликты, собирает языковой overlay в `Mods\\_active` и не переписывает оригинальные пакеты игры. Конвертер PS3/Wii работает только с совместимыми текстурными модами — модели, скрипты и чужой код он не притворяется умеющим переносить.
+- **Моды:** в лаунчере остаётся базовый раздел для включения и отключения уже подготовленных папок модов. Отдельный `ModManager.exe` временно не входит в публичную Beta 4. Я планирую выпустить новый менеджер отдельным приложением, включая установку с прямой заменой игровых файлов; это будущая работа, а не заявленная функция этой беты.
 - **Работа с фризами:** ограниченное ожидание новых D3D12-конвейеров, фоновые PSO-сборщики, ранний прогрев HDR-конвейера и сокращённая задержка отложенных операций сохранения.
 
 <p align="center">
@@ -53,7 +53,9 @@ This public repository contains the **standalone installer and its tools**. The 
 
 ## Version and release status
 
-**V2 BETA 1 — installer version `v2.0.0-beta.1`.** The previous public build was `v1.0.0-beta.3`.
+**V2 BETA 4** contains the repaired installer and language packages. See the [Beta 4 release notes](RELEASE_NOTES_BETA4_RU.md), download from the [specific Beta 4 release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4), and check the files against that release's `SHA256SUMS.txt`.
+
+### V2 BETA 1 baseline
 
 V2 attacks the two complaints that mattered most inside the runtime itself, not in a config file:
 
@@ -65,7 +67,7 @@ V2 attacks the two complaints that mattered most inside the runtime itself, not 
 
 Measured on the development machine (RTX 5060, 12 threads) after these changes: a 120 FPS target held with a median frame of 8.3 ms and p99 near 10 ms, zero in-frame pipeline builds across a session, and no 100 ms save hitch. Different hardware can still expose different problems.
 
-Download the build only from [GitHub Releases](https://github.com/GenryTheFox0/Project-2099/releases). If the release page has no attached files, there is no public build yet.
+Download Beta 4 only from [its direct release page](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4). It is a prerelease, so the general “latest” link may still lead to Beta 3. If that tag has no attached files, there is no public Beta 4 build yet.
 
 ### Known issues
 
@@ -151,7 +153,7 @@ NVIDIA does not officially support this port, compatibility varies by GPU, and t
 4. Choose an empty destination folder and complete installation.
 5. Start the installed `Launcher.exe`.
 
-For the normal online installation, download only `EOTInstaller-v1.0.0-beta.3.exe`; it retrieves and verifies the matching payload automatically. For an offline installation, download the payload ZIP too and extract its `payload` folder beside the installer.
+For an online installation, download the installer from the same release as the matching payload. For an offline installation, place the matching payload ZIP beside the installer or select it in the installer. Do not mix installer and payload files from different beta versions.
 
 Installation guides: [English](INSTALL_EN.md) · [Русский](INSTALL_RU.md) · [Deutsch](INSTALL_DE.md) · [Français](INSTALL_FR.md) · [Italiano](INSTALL_IT.md) · [Español](INSTALL_ES.md)
 
@@ -163,14 +165,10 @@ After a successful installation, the source ISO, GOD or extracted folder is no l
 
 **Which dumps work**
 
-Any dump of this game that carries `Default.xex`, `Data/Main.pkz` and `Data/BaseGameplay.pkz`.
-Revisions of this title differ mostly in level packages, and one revision's level is the same
-level, so those files are carried across from the player's own copy untouched.
-
-The translation lives in thirteen files, and those are the only ones the installer cares
-about. It matches each file by SHA-256 against an index: a text file it knows receives the
-Russian text, one it does not know stays as it is. A retail dump nobody has seen before
-therefore installs without any update to the program.
+The installer recognizes compatible Xbox 360 sources by file contents, including the level
+packages that contain embedded dialogue. The language checks cover both shared text files
+and scene subtitles. A container name, region label or matching `Default.xex` alone is not
+enough to prove that its text files can be reconstructed correctly.
 
 Recorded revisions, named on screen when they match:
 
@@ -179,17 +177,16 @@ Recorded revisions, named on screen when they match:
 - `ru-god-alt`: an alternate Russian LIVE/XSF GOD carrying a machine translation.
 - `sazanoff-rus-god`: Region Free RUS GOD (SazanOFF v1.0b).
 
-The last two are already translated by someone else. Their text is first returned to the
-canonical English and only then translated, so nothing of the foreign localisation survives.
-
-A dump whose text matches nothing known still installs; the final screen says how many of
-the thirteen files received the translation and names the ones that did not.
+The last two may contain altered Russian text and font encodings. Beta 4 reconstructs the
+verified English, German, French, Italian and Spanish targets and preserves the accepted
+Project 2099 Russian target. If a source package cannot be matched and reconstructed, the
+installer reports that package instead of silently placing its text in the wrong language tree.
 
 **Verification and recovery**
 
 The installer verifies source-file hashes, stages the build in a temporary directory, checks the final output, resumes interrupted downloads through HTTP Range requests, reuses valid cached payloads and blocks unsafe ZIP paths. Only a fully verified installation is moved into the chosen destination.
 
-Local checks included full installations from an XDVDFS ISO, two GOD containers and an extracted folder, each reconstructing both language trees with **293 files in each tree** and the translation reaching **13 of 13** text files. A local SSD run completed installation in approximately **34 seconds**, excluding the Internet download. That is a measurement on the development machine, not a universal installation-time promise.
+The Beta 4 candidate completed a clean local installation from the supplied SazanOFF source; the resulting Original and Russian trees each contained **293 verified files**. Patch chains for the five recorded source families were checked separately. This does not establish compatibility with every modified dump or visual correctness in every chapter.
 
 **What the release contains**
 
@@ -210,6 +207,26 @@ Somewhere along the way, it became a project I wanted other people to enjoy too.
 I used AI coding tools heavily during development, especially **OpenAI Codex and Astra**. I am not going to bullshit anyone and pretend otherwise. They helped with code, debugging, the installer, the launcher, log analysis and a mountain of experiments.
 
 Still, AI output never counted as proof. “Fix implemented successfully” means fuck all if the game opens to a black screen. Every change had to survive a clean build, file verification and the actual game.
+
+### Respect to the EdgeOfTimeRecompiled team
+
+I want to publicly give respect to **Graine25** and **SerJar** for their work on **EdgeOfTimeRecompiled (reeot)**.
+
+Project 2099 and reeot are two different projects with very different approaches. My project is heavily AI-assisted and built around my own modified ReXGlue setup, while reeot goes much deeper into manual reverse engineering and native rendering.
+
+That difference does not make us enemies.
+
+I respect the amount of time, knowledge and work they put into Edge of Time. I also personally learned useful things from talking with them, and I am thankful for the cooperation we already had around localization, fonts, textures and research.
+
+When reeot releases, I genuinely want to play it myself. If they do something better than Project 2099, I have no problem saying that openly.
+
+I also want people following Project 2099 to know that **reeot is a separate project and deserves its own attention**. I do not want anyone attacking their team in my name or turning this into another stupid “AI vs human” war.
+
+There is enough room for both projects.
+
+We are both trying to keep a 2011 Spider-Man game alive on modern PCs, just in completely different ways.
+
+**Respect to Graine25, SerJar and everyone helping EdgeOfTimeRecompiled.**
 
 ## Technology and acknowledgements
 
