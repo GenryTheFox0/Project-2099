@@ -15,7 +15,7 @@
 
 Проверено: 26 регрессионных проверок чтения и восстановления кэша, проверки диагностики ISO, защита цепочек патчей и преобразования всех пяти известных ревизий в согласованные Original/Russian-пакеты. Полные установки из доступных USA/Europe ISO (полного и компактного) и SazanOFF GOD прошли успешно; результаты сверены с эталонными наборами по 293 файла Original и Russian. Исходная ошибка на этих неповреждённых образах не воспроизвелась; совпадение названия раздачи не доказывает совпадение её байтов.
 
-Это не обещание поддержки любого переделанного или обрезанного ISO. Если ошибка повторится, пришлите **полный новый текст ошибки** и название исходника в [Discord](https://discord.gg/vrCTtBgjt): теперь сообщение показывает проблемный файл, а не заставляет гадать.
+Это не обещание поддержки любого переделанного или обрезанного ISO. Если ошибка повторится, пришлите **полный новый текст ошибки** и название исходника в [Discord](https://discord.gg/2Yy45gJap3): теперь сообщение показывает проблемный файл, а не заставляет гадать.
 
 ## English
 
@@ -28,4 +28,4 @@ Installer-only hotfix following an **Unexpected source size** report. That old m
 
 Download **EOTInstaller-v2.0.0-beta.4.1.exe** for online installation; it downloads its matching payload automatically. Offline installs need the matching **EOT-PC-Payload-v2.0.0-beta.4.1.zip**. An already working Beta 4 installation does not need reinstalling for this hotfix.
 
-Full installations from the available full-size and compact USA/Europe ISOs and SazanOFF GOD completed successfully, with their Original and Russian outputs checked against the canonical 293-file inventories. Cache/stream regressions, ISO diagnostics and patch routes for all five known source revisions passed. This does not establish compatibility with every modified dump. If installation fails, send the complete new error to [Discord](https://discord.gg/vrCTtBgjt).
+Full installations from the available full-size and compact USA/Europe ISOs and SazanOFF GOD completed successfully, with their Original and Russian outputs checked against the canonical 293-file inventories. Cache/stream regressions, ISO diagnostics and patch routes for all five known source revisions passed. This does not establish compatibility with every modified dump. If installation fails, send the complete new error to [Discord](https://discord.gg/2Yy45gJap3).

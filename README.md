@@ -12,7 +12,7 @@
   <a href="RELEASE_NOTES_BETA4_1.md">Installer hotfix</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
-  <a href="https://discord.gg/vrCTtBgjt">Discord</a>
+  <a href="https://discord.gg/2Yy45gJap3">Discord</a>
 </p>
 
 ## Коротко по-русски
@@ -39,7 +39,7 @@
 
 Project 2099 остаётся бесплатным. Добровольная поддержка проекта доступна прямо в `Launcher.exe`: на главном экране и в разделе «Проект». Платёжные ссылки намеренно не дублируются в описании репозитория. Лаунчер только открывает выбранный сервис, не принимает платёжные данные и ничего не разблокирует за донат.
 
-Новости: **[Telegram](https://t.me/teamgenrythefox)** · обсуждение и баг-репорты: **[Discord](https://discord.gg/vrCTtBgjt)**.
+Новости: **[Telegram](https://t.me/teamgenrythefox)** · обсуждение и баг-репорты: **[Discord](https://discord.gg/2Yy45gJap3)**.
 
 ## What this is
 
@@ -294,7 +294,7 @@ Project 2099 is free. Voluntary support options are available directly inside `L
 
 ## Telegram — Склад Генри
 
-**[Telegram — development updates, screenshots and releases](https://t.me/teamgenrythefox)** · **[Discord — Project 2099 discussion and bug reports](https://discord.gg/vrCTtBgjt)**
+**[Telegram — development updates, screenshots and releases](https://t.me/teamgenrythefox)** · **[Discord — Project 2099 discussion and bug reports](https://discord.gg/2Yy45gJap3)**
 
 News, screenshots, videos, experiments, failures, victories and all the rest of my bullshit — straight from me.
 
