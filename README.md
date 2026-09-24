@@ -6,10 +6,10 @@
 <p align="center"><strong>Две эпохи. Один полноценный PC-порт.</strong><br>Two eras. One proper PC port.</p>
 
 <p align="center">
-  <a href="https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4">V2 BETA 4 download</a> ·
+  <a href="https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1">V2 BETA 4.1 download</a> ·
   <a href="#installation">Installation</a> ·
   <a href="INSTALLATION.md">Six-language guides</a> ·
-  <a href="RELEASE_NOTES_BETA4_RU.md">V2 BETA 4</a> ·
+  <a href="RELEASE_NOTES_BETA4_1.md">Installer hotfix</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
   <a href="https://discord.gg/vrCTtBgjt">Discord</a>
@@ -21,7 +21,7 @@
 
 Игровые данные в репозитории не лежат. Пользователь указывает совместимую собственную копию Xbox 360-игры — **ISO, ZIP, распакованную папку или поддерживаемый GOD/SVOD** — а установщик проверяет источник и собирает готовую PC Edition.
 
-**V2 BETA 4** включает исправленные языковые пакеты и установщик. Подробности — в [заметках Beta 4](RELEASE_NOTES_BETA4_RU.md) и [инструкции публикации](PUBLISH_BETA4_RU.md). Скачивайте файлы с [прямой страницы выпуска](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4) и проверяйте их по `SHA256SUMS.txt` из того же выпуска.
+**V2 BETA 4.1** — исправление установщика: проверка и восстановление неполного кэша PC Edition, понятная диагностика размера конкретного файла и удаление старых служебных заметок из устанавливаемого пакета. Языковые пакеты и игровой рантайм Beta 4 не менялись. Подробности — в [заметках хотфикса](RELEASE_NOTES_BETA4_1.md) и [заметках Beta 4](RELEASE_NOTES_BETA4_RU.md). Скачивайте файлы с [прямой страницы выпуска](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1) и проверяйте их по `SHA256SUMS.txt` из того же выпуска.
 
 ### Что нового в V2
 
@@ -53,7 +53,7 @@ This public repository contains the **standalone installer and its tools**. The 
 
 ## Version and release status
 
-**V2 BETA 4** contains the repaired installer and language packages. See the [Beta 4 release notes](RELEASE_NOTES_BETA4_RU.md), download from the [specific Beta 4 release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4), and check the files against that release's `SHA256SUMS.txt`.
+**V2 BETA 4.1** is an installer hotfix: incomplete payload-cache recovery, file-specific size diagnostics, and a cleaner installed package. The Beta 4 runtime and language patches are unchanged. See the [hotfix notes](RELEASE_NOTES_BETA4_1.md), download from the [specific release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1), and check the files against that release's `SHA256SUMS.txt`.
 
 ### V2 BETA 1 baseline
 
@@ -67,7 +67,7 @@ V2 attacks the two complaints that mattered most inside the runtime itself, not 
 
 Measured on the development machine (RTX 5060, 12 threads) after these changes: a 120 FPS target held with a median frame of 8.3 ms and p99 near 10 ms, zero in-frame pipeline builds across a session, and no 100 ms save hitch. Different hardware can still expose different problems.
 
-Download Beta 4 only from [its direct release page](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4). It is a prerelease, so the general “latest” link may still lead to Beta 3. If that tag has no attached files, there is no public Beta 4 build yet.
+Download the current installer from [V2 BETA 4.1](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1). This is published as a regular GitHub release; the game itself remains beta software with the limitations listed below. The generic latest endpoint remains on the runtime-update channel; use this direct link for the installer hotfix. If Beta 4 already installs and runs correctly, this installer-only hotfix does not require reinstalling the game or replacing saves.
 
 ### Known issues
 

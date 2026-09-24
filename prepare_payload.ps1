@@ -81,17 +81,55 @@ foreach($generated in @($port,$patches)){
 }
 New-Item -ItemType Directory -Force -Path $sets | Out-Null
 
+$publicModAllowlist=@(
+  'Mods/README_RU.txt',
+  'Mods/_example/mod.json',
+  'Mods/_example/Data/README.txt'
+)
+$publicExclusions=@(
+  'ModManager.exe',
+  'Launcher.Tests.exe',
+  'LOCAL_UPDATE_PACKAGE.md',
+  'local-update-manifest.schema.json',
+  'UPDATE_20260908_RU.txt',
+  'UPDATE_SYSTEM.md',
+  'UPDATE_V1_PHOTO_20260919_RU.txt',
+  'UPDATE_V100_SETTINGS_MODS_20260919_RU.txt',
+  'UPDATE_V101_PERF_DETAIL_20260921_RU.txt',
+  'UPDATE_V95_HITCH_20260918_RU.txt',
+  'update-manifest.schema.json',
+  'update-sources.schema.json',
+  'V2_BETA1_TEST.txt',
+  'Support/BUILD_INFO.txt',
+  'Support/ACCEPTED_FINAL_QTE_RU_20260909.md',
+  'Support/ACHIEVEMENT_PREVIEW_FIX.json',
+  'Support/AUDIO_WEAKPC_CANDIDATE_20260909.md',
+  'Support/HUD_TEXT_ICON_FIX.json',
+  'Support/QTE_TRANSLATION_FIX.json',
+  'Support/DLSS5/AUTO_DLSS5_DEPLOYMENT.json',
+  'Support/DLSS5/AUTOPILOT_STAGE_REPORT.json',
+  'Support/DLSS5/DEPTH_FIX_DEPLOYMENT.json',
+  'Support/DLSS5/SELECTED_PROFILE.json'
+)
 $releasePrefix=$release.TrimEnd('\')+'\'
 foreach($file in Get-ChildItem -LiteralPath $release -Recurse -File){
   $relative=$file.FullName.Substring($releasePrefix.Length)
   $normalized=$relative.Replace('\','/')
   $exclude=$normalized -like 'Data/Original/*' -or $normalized -like 'Data/Russian/*' -or
-    $normalized -like 'UserData/*' -or $normalized -like 'Reports/*' -or
-    $normalized -like 'tests/*' -or $normalized -eq 'tests' -or
+    $normalized -like 'UserData/*' -or $normalized -like 'Reports/*' -or $normalized -like 'Screenshots/*' -or
+    $normalized -like 'DLSS5 Screenshots/*' -or $normalized -like 'tests/*' -or $normalized -eq 'tests' -or
+    $normalized -like 'TestProfile/*' -or $normalized -like 'TestDLCProfile20260920/*' -or
+    $normalized -like 'Cache/shaders/local/*' -or
     $normalized -like 'Support/Backups/*' -or $normalized -like 'Support/Revisions/*' -or
     $normalized -like 'Support/Build/*' -or $normalized -like 'Support/Evidence/*' -or
-    $normalized -eq 'Launcher.Tests.exe' -or $normalized -like '*.log' -or
-    $normalized -like '*.previous'
+    $normalized -like 'Support/PhotoBuildBackups/*' -or $normalized -like 'Support/V2BrandBackups/*' -or
+    $normalized -like 'Support/RetiredRootFiles_*/*' -or $normalized -like 'Tools/*' -or
+    $normalized -like 'ModsTemplate/*' -or
+    (($normalized -like 'Mods/*') -and ($normalized -notin $publicModAllowlist)) -or
+    $normalized -in $publicExclusions -or $normalized -match '(?i)\.log\d*$' -or
+    $normalized -like '*.previous' -or $normalized -like '*.toml.*' -or
+    $normalized -like '*.before_*' -or $normalized -like '*.pyc' -or
+    [IO.Path]::GetFileName($normalized) -ieq 'launcher_settings.json'
   if($exclude){continue}
   $target=Join-Path $port $relative
   New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($target)) | Out-Null

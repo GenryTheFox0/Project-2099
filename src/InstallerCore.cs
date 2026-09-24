@@ -246,7 +246,8 @@ namespace EotInstaller {
           long length = source.GetLength(path);
           sizes[path] = length;
           using (Stream input = source.OpenRead(path))
-            hashes[path] = HashStream(input, length, CancellationToken.None, null);
+            hashes[path] = HashStream(input, length, CancellationToken.None, null,
+              "game source [" + source.Kind + "]: " + path);
         }
         writer.WriteLine("READ\t" + hashes.Count + " of " + paths.Count + " known paths");
 
@@ -468,7 +469,8 @@ namespace EotInstaller {
           if (expected == null || actual == null || actual.Size != expected.Size) { matches = false; break; }
           cancellation.ThrowIfCancellationRequested();
           string hash;
-          using (Stream input = source.OpenRead(actual.Path)) hash = HashStream(input, actual.Size, cancellation, null);
+          using (Stream input = source.OpenRead(actual.Path)) hash = HashStream(input, actual.Size, cancellation, null,
+            "game source [" + source.Kind + "]: " + actual.Path);
           if (!SameHash(hash, expected.Sha256)) { matches = false; break; }
         }
         if (matches) return manifest;
@@ -531,7 +533,7 @@ namespace EotInstaller {
             Directory.CreateDirectory(Path.GetDirectoryName(output));
             string hash = CopyFileWithHash(payloadSource, output, file.Size, cancellation, bytes => {
               completed += bytes; Report(progress, "PC Edition", relative, completed, total);
-            });
+            }, "PC Edition payload: " + relative);
             if (!SameHash(hash, file.Sha256)) throw new InvalidDataException("Payload hash mismatch: " + relative);
           }
 
@@ -545,7 +547,7 @@ namespace EotInstaller {
               BufferSize, FileOptions.SequentialScan)) {
               file.Sha256 = CopyStreamWithHash(input, targetStream, file.Size, cancellation, bytes => {
                 completed += bytes; Report(progress, "Распаковка источника", file.Path, completed, total);
-              });
+              }, "game source [" + source.Kind + "]: " + file.Path);
             }
           }
 
@@ -904,19 +906,21 @@ namespace EotInstaller {
 
     static string HashFile(string path, CancellationToken cancellation) {
       using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
-        BufferSize, FileOptions.SequentialScan)) return HashStream(stream, stream.Length, cancellation, null);
+        BufferSize, FileOptions.SequentialScan)) return HashStream(stream, stream.Length, cancellation, null,
+          "local file: " + path);
     }
 
     static string CopyFileWithHash(string source, string target, long expectedSize,
-      CancellationToken cancellation, Action<int> advanced) {
+      CancellationToken cancellation, Action<int> advanced, string context) {
       using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read,
         BufferSize, FileOptions.SequentialScan))
       using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None,
         BufferSize, FileOptions.SequentialScan))
-        return CopyStreamWithHash(input, output, expectedSize, cancellation, advanced);
+        return CopyStreamWithHash(input, output, expectedSize, cancellation, advanced, context);
     }
 
-    static string HashStream(Stream stream, long expectedSize, CancellationToken cancellation, Action<int> advanced) {
+    static string HashStream(Stream stream, long expectedSize, CancellationToken cancellation, Action<int> advanced,
+      string context) {
       using (var hash = SHA256.Create()) {
         var buffer = new byte[BufferSize]; long total = 0;
         while (true) {
@@ -925,13 +929,15 @@ namespace EotInstaller {
           hash.TransformBlock(buffer, 0, read, null, 0); total += read; if (advanced != null) advanced(read);
         }
         hash.TransformFinalBlock(new byte[0], 0, 0);
-        if (total != expectedSize) throw new EndOfStreamException("Unexpected source size");
+        if (total != expectedSize) throw new EndOfStreamException(
+          "File is incomplete or changed while being read: " + context +
+          " (expected " + expectedSize + " bytes, read " + total + ")");
         return ToHex(hash.Hash);
       }
     }
 
     static string CopyStreamWithHash(Stream input, Stream output, long expectedSize,
-      CancellationToken cancellation, Action<int> advanced) {
+      CancellationToken cancellation, Action<int> advanced, string context) {
       using (var hash = SHA256.Create()) {
         var buffer = new byte[BufferSize]; long total = 0;
         while (true) {
@@ -941,7 +947,9 @@ namespace EotInstaller {
           total += read; if (advanced != null) advanced(read);
         }
         hash.TransformFinalBlock(new byte[0], 0, 0);
-        if (total != expectedSize) throw new EndOfStreamException("Unexpected source size");
+        if (total != expectedSize) throw new EndOfStreamException(
+          "File is incomplete or changed while being read: " + context +
+          " (expected " + expectedSize + " bytes, read " + total + ")");
         return ToHex(hash.Hash);
       }
     }

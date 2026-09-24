@@ -66,9 +66,16 @@ namespace EotInstaller {
       if (!String.IsNullOrWhiteSpace(manualPath)) {
         string full = Path.GetFullPath(manualPath.Trim().Trim('"'));
         if (Directory.Exists(full)) {
-          if (IsPayload(full)) { Report(progress, "Локальный payload", full, 1, 1); report.Add("manual folder: " + full); return full; }
+          string issue;
+          if (IsPayload(full)) {
+            if (!PayloadFileSizesMatch(full, out issue)) throw new PayloadUnavailableException("Payload folder is incomplete: " + issue);
+            Report(progress, "Локальный payload", full, 1, 1); report.Add("manual folder: " + full); return full;
+          }
           string nested = Path.Combine(full, "payload");
-          if (IsPayload(nested)) { Report(progress, "Локальный payload", nested, 1, 1); report.Add("manual folder: " + nested); return nested; }
+          if (IsPayload(nested)) {
+            if (!PayloadFileSizesMatch(nested, out issue)) throw new PayloadUnavailableException("Payload folder is incomplete: " + issue);
+            Report(progress, "Локальный payload", nested, 1, 1); report.Add("manual folder: " + nested); return nested;
+          }
           throw new PayloadUnavailableException("В папке нет payload-manifest.json, port и patches: " + full);
         }
         if (File.Exists(full)) {
@@ -80,19 +87,27 @@ namespace EotInstaller {
 
       // 2. Extracted payload folder next to the installer.
       foreach (string local in LocalPayloadFolders()) {
-        if (IsPayload(local)) { Report(progress, "Локальный payload", local, 1, 1); report.Add("local folder: " + local); return local; }
+        string issue = null;
+        if (IsPayload(local) && PayloadFileSizesMatch(local, out issue)) {
+          Report(progress, "Локальный payload", local, 1, 1); report.Add("local folder: " + local); return local;
+        }
+        if (IsPayload(local)) report.Add("local folder rejected: " + issue);
       }
       report.Add("local folder: none (" + String.Join("; ", LocalPayloadFolders()) + ")");
 
       // 3. Verified cache of an earlier run.
       if (channel != null) {
         string cache = CacheFolder(channel);
+        string issue = null;
         if (IsPayload(cache) && File.Exists(ReadyMarker(cache)) &&
-            String.Equals(File.ReadAllText(ReadyMarker(cache)).Trim(), channel.PayloadSha256, StringComparison.OrdinalIgnoreCase)) {
+            String.Equals(File.ReadAllText(ReadyMarker(cache)).Trim(), channel.PayloadSha256, StringComparison.OrdinalIgnoreCase) &&
+            PayloadFileSizesMatch(cache, out issue)) {
           Report(progress, "Payload уже загружен", channel.Version, channel.PayloadSize, channel.PayloadSize);
           report.Add("cache: " + cache);
           return cache;
         }
+        if (IsPayload(cache) && File.Exists(ReadyMarker(cache)))
+          report.Add("cache rejected: " + (String.IsNullOrWhiteSpace(issue) ? "ready marker or release hash mismatch" : issue));
       }
 
       // 4. Offline ZIP next to the installer or in Downloads.
@@ -389,7 +404,9 @@ namespace EotInstaller {
       // A verified archive lands in the versioned cache; anything else gets its own folder keyed by content hash.
       string cacheBase = verified ? CacheFolder(channel)
         : Path.Combine(AppDataRoot(), "payloads", "manual-" + HashFile(archive, progress, "Проверка архива", cancellation).Substring(0, 16));
-      if (IsPayload(cacheBase) && File.Exists(ReadyMarker(cacheBase))) {
+      string cachedIssue;
+      if (IsPayload(cacheBase) && File.Exists(ReadyMarker(cacheBase)) &&
+          PayloadFileSizesMatch(cacheBase, out cachedIssue)) {
         Report(progress, "Payload уже загружен", archive, 1, 1);
         return cacheBase;
       }
@@ -406,20 +423,27 @@ namespace EotInstaller {
             string output = SafeZipPath(stage, relative);
             if (entry.FullName.EndsWith("/", StringComparison.Ordinal)) { Directory.CreateDirectory(output); continue; }
             Directory.CreateDirectory(Path.GetDirectoryName(output));
+            long entryWritten = 0;
             using (Stream input = entry.Open())
             using (var file = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1 << 20, FileOptions.SequentialScan)) {
               var buffer = new byte[1 << 20];
               while (true) {
                 int read = await input.ReadAsync(buffer, 0, buffer.Length, cancellation); if (read == 0) break;
-                await file.WriteAsync(buffer, 0, read, cancellation); done += read;
+                await file.WriteAsync(buffer, 0, read, cancellation); done += read; entryWritten += read;
                 Report(progress, "Распаковка payload", relative, done, total);
               }
             }
+            if (entryWritten != entry.Length) throw new InvalidDataException(
+              "Payload ZIP is incomplete: " + relative + " (expected " + entry.Length +
+              " bytes, extracted " + entryWritten + ")");
           }
         }
         // build_release.ps1 zips the "payload" folder itself; accept a root-level layout too.
         string extracted = IsPayload(Path.Combine(stage, "payload")) ? Path.Combine(stage, "payload") : IsPayload(stage) ? stage : null;
         if (extracted == null) throw new InvalidDataException("в архиве нет папки payload с payload-manifest.json, port и patches");
+        string extractedIssue;
+        if (!PayloadFileSizesMatch(extracted, out extractedIssue))
+          throw new InvalidDataException("Extracted payload is incomplete: " + extractedIssue);
         if (Directory.Exists(cacheBase)) Directory.Delete(cacheBase, true);
         if (extracted == stage) { Directory.Move(stage, cacheBase); }
         else { Directory.Move(extracted, cacheBase); Directory.Delete(stage, true); }
@@ -437,6 +461,31 @@ namespace EotInstaller {
     static bool IsPayload(string path) {
       return Directory.Exists(path) && File.Exists(Path.Combine(path, "payload-manifest.json")) &&
         Directory.Exists(Path.Combine(path, "port")) && Directory.Exists(Path.Combine(path, "patches"));
+    }
+
+    bool PayloadFileSizesMatch(string payload, out string issue) {
+      issue = null;
+      try {
+        string manifestPath = Path.Combine(payload, "payload-manifest.json");
+        if (!File.Exists(manifestPath)) { issue = "payload-manifest.json is missing"; return false; }
+        var manifest = json.Deserialize<PayloadManifest>(File.ReadAllText(manifestPath, Encoding.UTF8));
+        if (manifest == null || manifest.Schema != 1 || manifest.Files == null || manifest.Files.Count == 0) {
+          issue = "payload-manifest.json is invalid"; return false;
+        }
+        string port = Path.Combine(payload, "port");
+        foreach (ManifestFile entry in manifest.Files) {
+          string relative = InstallerCore.NormalizeRelative(entry.Path);
+          string file = SafeZipPath(port, relative);
+          if (!File.Exists(file)) { issue = relative + " is missing"; return false; }
+          long actual = new FileInfo(file).Length;
+          if (actual != entry.Size) {
+            issue = relative + " has " + actual + " bytes instead of " + entry.Size; return false;
+          }
+        }
+        return true;
+      } catch (Exception error) {
+        issue = error.Message; return false;
+      }
     }
 
     static string SafeName(string value) {

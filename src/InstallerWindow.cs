@@ -265,7 +265,7 @@ namespace EotInstaller {
       header.Children.Add(new Image { Source = LoadImage("EOT.project2099_logo.png"), Width = 355, Height = 82,
         Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left,
         VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(32, 2, 0, 0), IsHitTestVisible = false });
-      header.Children.Add(new TextBlock { Text = "V2 BETA 4 TEST  //  INSTALLER", Foreground = Solid("#9CE7FF"),
+      header.Children.Add(new TextBlock { Text = "V2 BETA 4.1  //  INSTALLER HOTFIX", Foreground = Solid("#9CE7FF"),
         FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = FontWeights.SemiBold,
         HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom,
         Margin = new Thickness(405, 0, 0, 15), IsHitTestVisible = false });
@@ -451,7 +451,7 @@ namespace EotInstaller {
       nextButton.Visibility = page == Page.Installing || page == Page.Done ? Visibility.Collapsed : Visibility.Visible;
       closeButton.Content = page == Page.Installing ? Nav("cancel") : page == Page.Done ? Nav("close") : Nav("quit");
       footerStatus.Text = previewMode ? "UI PREVIEW  //  GAME DATA IS NOT INCLUDED" :
-        "TITLE ID 415608B2  //  v2.0.0-beta.4  //  " +
+        "TITLE ID 415608B2  //  v2.0.0-beta.4.1  //  " +
         L("НУЖНА ВАША КОПИЯ ДЛЯ XBOX 360", "YOUR OWN XBOX 360 COPY IS REQUIRED", "EIGENE XBOX-360-KOPIE ERFORDERLICH",
           "VOTRE PROPRE COPIE XBOX 360 EST REQUISE", "SERVE UNA TUA COPIA XBOX 360", "SE REQUIERE TU PROPIA COPIA DE XBOX 360");
       peterImage.Opacity = page == Page.Setup ? 0.62 : 0.42;

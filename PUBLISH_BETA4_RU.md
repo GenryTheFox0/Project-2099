@@ -1,13 +1,13 @@
-# Публикация Project 2099 V2 BETA 4
+# Публикация Project 2099 V2 BETA 4.1
 
-Тег: `v2.0.0-beta.4`. Репозиторий: `GenryTheFox0/Project-2099`. Выпуск помечается **prerelease**, пока игроки проверяют катсцены на пяти исходных языках. Старая ссылка `/releases/latest` может оставаться на beta 3; для Beta 4 используйте [прямую страницу тега](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4).
+Тег: `v2.0.0-beta.4.1`. Репозиторий: `GenryTheFox0/Project-2099`. Хотфикс публикуется обычным релизом с `--latest=false`, без `--prerelease`. Прямая страница: [V2 BETA 4.1](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1). Название Beta описывает состояние игры и не требует флага GitHub prerelease. Указатель latest остаётся на выпуске с манифестом обновления рантайма: installer-only хотфикс не должен сломать этот адрес для существующих лаунчеров.
 
 ## Состав выпуска
 
-Установщик и payload собираются только как одна пара. После выполнения `tools/package_beta4_release.ps1` в `artifacts/release-v2.0.0-beta.4/` должны лежать:
+Установщик и payload собираются только как одна пара. После выполнения `tools/package_beta4_release.ps1` в `artifacts/release-v2.0.0-beta.4.1/` должны лежать:
 
-- `EOTInstaller-v2.0.0-beta.4.exe`;
-- `EOT-PC-Payload-v2.0.0-beta.4.zip`;
+- `EOTInstaller-v2.0.0-beta.4.1.exe`;
+- `EOT-PC-Payload-v2.0.0-beta.4.1.zip`;
 - `SHA256SUMS.txt`;
 - `release-manifest.json`.
 
@@ -19,7 +19,7 @@
 
 ## Перед публикацией
 
-1. Проверьте, что [заметки выпуска](RELEASE_NOTES_BETA4_RU.md), шесть инструкций установки и README называют Beta 4.
+1. Проверьте, что [заметки хотфикса](RELEASE_NOTES_BETA4_1.md), шесть инструкций установки и README ссылаются на Beta 4.1. Исторические заметки Beta 4 сохраните отдельно.
 2. Убедитесь, что установщик и payload собраны из одного языкового индекса; `release-manifest.json` и `SHA256SUMS.txt` должны соответствовать обоим файлам.
 3. Уберите из коммита локальные QA, игровые данные, бэкапы, кеши, ключи и личные пути. Просмотрите именно `git diff --cached`, а не только список файлов.
 4. Отдельно проверьте полный путь установки из SazanOFF и запуск выбранных языков. Проверка состава файлов сама по себе не заменяет просмотр катсцен.
@@ -29,14 +29,14 @@
 После публикации проверенного исходного коммита:
 
 ```powershell
-gh release create v2.0.0-beta.4 `
-  "artifacts/release-v2.0.0-beta.4/EOTInstaller-v2.0.0-beta.4.exe" `
-  "artifacts/release-v2.0.0-beta.4/EOT-PC-Payload-v2.0.0-beta.4.zip" `
-  "artifacts/release-v2.0.0-beta.4/SHA256SUMS.txt" `
-  "artifacts/release-v2.0.0-beta.4/release-manifest.json" `
-  --title "Project 2099 — V2 BETA 4" `
-  --notes-file RELEASE_NOTES_BETA4_RU.md `
-  --prerelease
+gh release create v2.0.0-beta.4.1 `
+  "artifacts/release-v2.0.0-beta.4.1/EOTInstaller-v2.0.0-beta.4.1.exe" `
+  "artifacts/release-v2.0.0-beta.4.1/EOT-PC-Payload-v2.0.0-beta.4.1.zip" `
+  "artifacts/release-v2.0.0-beta.4.1/SHA256SUMS.txt" `
+  "artifacts/release-v2.0.0-beta.4.1/release-manifest.json" `
+  --title "Project 2099 — V2 BETA 4.1" `
+  --notes-file RELEASE_NOTES_BETA4_1.md `
+  --latest=false
 ```
 
 Публикация не закончена, пока файлы не скачаны **без входа в GitHub** с прямой страницы тега. Проверьте HTTP-ответ, размеры и SHA-256 скачанных файлов против `SHA256SUMS.txt`. Ответ авторизованного `gh` не подтверждает, что выпуск видит обычный игрок.

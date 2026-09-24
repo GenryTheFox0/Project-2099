@@ -18,20 +18,33 @@ import sys
 EXCLUDED_DIRS = {
     'Data/Original', 'Data/Russian',          # game data: the user brings their own copy
     'Mods', 'ModsTemplate',                   # mod content = derived game assets; the launcher recreates the folders
-    'Reports', 'Screenshots', 'UserData', 'tests',
+    'Reports', 'Screenshots', 'DLSS5 Screenshots', 'UserData', 'tests',
     'TestProfile', 'TestDLCProfile20260920',
+    'Tools',                                  # developer converters and machine-local helper scripts
     'Support/Backups', 'Support/Revisions', 'Support/Build', 'Support/Evidence',
     'Support/PhotoBuildBackups', 'Support/V2BrandBackups',
     'Cache/shaders/local',                    # machine-local D3D12 PSO library (93 MB), rebuilt per PC
 }
-EXCLUDED_DIR_PATTERNS = [re.compile(r'^Support/RetiredRootFiles_'), re.compile(r'^Mods/'), re.compile(r'^Tools/__pycache__')]
-EXCLUDED_FILES = {'Launcher.Tests.exe',
-                  # internal QA records: they carry the author's own paths and mean nothing to a player
-                  'ACCEPTED_FINAL_QTE_RU_20260909.md', 'ACHIEVEMENT_PREVIEW_FIX.json',
-                  'AUDIO_WEAKPC_CANDIDATE_20260909.md', 'HUD_TEXT_ICON_FIX.json',
-                  'QTE_TRANSLATION_FIX.json'}
-EXCLUDED_FILE_PATTERNS = [re.compile(r'\.log$'), re.compile(r'\.previous$'), re.compile(r'\.toml\.'), re.compile(r'\.before_'),
-                          re.compile(r'\.pyc$'), re.compile(r'^launcher_settings\.json$')]
+EXCLUDED_DIR_PATTERNS = [re.compile(r'^Support/RetiredRootFiles_'), re.compile(r'^Mods/')]
+EXCLUDED_FILES = {
+    'Launcher.Tests.exe', 'ModManager.exe',
+    'LOCAL_UPDATE_PACKAGE.md', 'local-update-manifest.schema.json',
+    'UPDATE_20260908_RU.txt', 'UPDATE_SYSTEM.md',
+    'UPDATE_V1_PHOTO_20260919_RU.txt', 'UPDATE_V100_SETTINGS_MODS_20260919_RU.txt',
+    'UPDATE_V101_PERF_DETAIL_20260921_RU.txt', 'UPDATE_V95_HITCH_20260918_RU.txt',
+    'update-manifest.schema.json', 'update-sources.schema.json', 'V2_BETA1_TEST.txt',
+    'Support/BUILD_INFO.txt',
+    'Support/ACCEPTED_FINAL_QTE_RU_20260909.md', 'Support/ACHIEVEMENT_PREVIEW_FIX.json',
+    'Support/AUDIO_WEAKPC_CANDIDATE_20260909.md', 'Support/HUD_TEXT_ICON_FIX.json',
+    'Support/QTE_TRANSLATION_FIX.json',
+    'Support/DLSS5/AUTO_DLSS5_DEPLOYMENT.json',
+    'Support/DLSS5/AUTOPILOT_STAGE_REPORT.json',
+    'Support/DLSS5/DEPTH_FIX_DEPLOYMENT.json',
+    'Support/DLSS5/SELECTED_PROFILE.json',
+}
+EXCLUDED_FILE_PATTERNS = [re.compile(r'\.log\d*$', re.IGNORECASE), re.compile(r'\.previous$', re.IGNORECASE),
+                          re.compile(r'\.toml\.', re.IGNORECASE), re.compile(r'\.before_', re.IGNORECASE),
+                          re.compile(r'\.pyc$', re.IGNORECASE), re.compile(r'^launcher_settings\.json$', re.IGNORECASE)]
 
 # The shipped config = candidate config with the author's personal choices reset.
 TOML_OVERRIDES = {
@@ -50,7 +63,7 @@ def excluded(rel, is_dir):
         if rel in EXCLUDED_DIRS: return True
         return any(p.search(rel) for p in EXCLUDED_DIR_PATTERNS)
     name = rel.rsplit('/', 1)[-1]
-    if name in EXCLUDED_FILES: return True
+    if rel in EXCLUDED_FILES: return True
     return any(p.search(name) for p in EXCLUDED_FILE_PATTERNS)
 
 
@@ -103,9 +116,6 @@ def main():
         shutil.copytree(ex, os.path.join(dst, 'Mods', '_example'), dirs_exist_ok=True)
     # Same pass the payload gets: internal QA notes out, captured user paths rewritten.
     import subprocess
-    subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                 'sanitize_release_root.py'), dst], check=True)
-    # Same pass the payload gets: internal QA notes out, captured user paths rewritten.
     subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                  'sanitize_release_root.py'), dst], check=True)
     report = {'source': src, 'staging': dst, 'files_copied': copied, 'skipped': sorted(skipped)}

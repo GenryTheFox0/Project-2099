@@ -8,5 +8,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCopyright("Copyright © 2026 GenryTheFox contributors")]
 [assembly: ComVisible(false)]
 [assembly: AssemblyVersion("2.0.0.4")]
-[assembly: AssemblyFileVersion("2.0.0.4")]
-[assembly: AssemblyInformationalVersion("v2.0.0-beta.4")]
+[assembly: AssemblyFileVersion("2.0.4.1")]
+[assembly: AssemblyInformationalVersion("v2.0.0-beta.4.1")]

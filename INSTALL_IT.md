@@ -8,20 +8,20 @@
 
 Per la normale installazione online serve soltanto:
 
-- `EOTInstaller-v2.0.0-beta.4.exe`
+- `EOTInstaller-v2.0.0-beta.4.1.exe`
 
-L'installer scarica automaticamente `EOT-PC-Payload-v2.0.0-beta.4.zip`, riprende un trasferimento interrotto e controlla dimensione e SHA-256 prima dell'estrazione.
+L'installer scarica automaticamente `EOT-PC-Payload-v2.0.0-beta.4.1.zip`, riprende un trasferimento interrotto e controlla dimensione e SHA-256 prima dell'estrazione.
 
 Gli altri file della release sono:
 
-- `EOT-PC-Payload-v2.0.0-beta.4.zip` — componenti e patch della PC Edition; non serve scaricarlo manualmente per l'installazione normale;
+- `EOT-PC-Payload-v2.0.0-beta.4.1.zip` — componenti e patch della PC Edition; non serve scaricarlo manualmente per l'installazione normale;
 - `SHA256SUMS.txt` — checksum dell'installer e del payload;
 - `release-manifest.json` — versione, dimensioni, hash e sorgenti supportate;
 - `Source code` — codice sorgente dell'installer, non una copia giocabile del gioco.
 
 ## Installazione normale
 
-1. Scarica `EOTInstaller-v2.0.0-beta.4.exe` dalla [release ufficiale del progetto](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4).
+1. Scarica `EOTInstaller-v2.0.0-beta.4.1.exe` dalla [release ufficiale del progetto](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1).
 2. Avvia l'installer.
 3. Seleziona la lingua dell'installer e del gioco.
 4. Attendi il download e la verifica dei componenti della PC Edition.
@@ -41,14 +41,14 @@ Dopo un'installazione riuscita, l'ISO, il GOD o la cartella console estratta non
 ## Installazione offline
 
 1. Scarica entrambi i file:
-   - `EOTInstaller-v2.0.0-beta.4.exe`;
-   - `EOT-PC-Payload-v2.0.0-beta.4.zip`.
+   - `EOTInstaller-v2.0.0-beta.4.1.exe`;
+   - `EOT-PC-Payload-v2.0.0-beta.4.1.zip`.
 2. Crea una cartella separata per l'installer.
 3. Puoi lasciare lo ZIP accanto all'EXE senza estrarlo. Se lo estrai, la struttura è:
 
 ```text
 EOT GitHub Installer\
-├── EOTInstaller-v2.0.0-beta.4.exe
+├── EOTInstaller-v2.0.0-beta.4.1.exe
 └── payload\
     ├── payload-manifest.json
     ├── port\
@@ -104,7 +104,7 @@ Il gioco non usa questa cache dopo un'installazione riuscita. Puoi conservarla p
 L'installer non è ancora firmato con un certificato commerciale, quindi Windows SmartScreen può mostrare un avviso. Scaricalo solo dalla release GitHub ufficiale e, se necessario, verificalo:
 
 ```powershell
-Get-FileHash .\EOTInstaller-v2.0.0-beta.4.exe -Algorithm SHA256
+Get-FileHash .\EOTInstaller-v2.0.0-beta.4.1.exe -Algorithm SHA256
 ```
 
 Confronta il risultato con `SHA256SUMS.txt` allegato a questa stessa release Beta 4. Le somme delle versioni precedenti non valgono.

@@ -8,20 +8,20 @@
 
 For a normal online installation, download only:
 
-- `EOTInstaller-v2.0.0-beta.4.exe`
+- `EOTInstaller-v2.0.0-beta.4.1.exe`
 
-The installer downloads `EOT-PC-Payload-v2.0.0-beta.4.zip`, resumes an interrupted transfer and verifies its size and SHA-256 before extraction.
+The installer downloads `EOT-PC-Payload-v2.0.0-beta.4.1.zip`, resumes an interrupted transfer and verifies its size and SHA-256 before extraction.
 
 The other release files are:
 
-- `EOT-PC-Payload-v2.0.0-beta.4.zip` — PC Edition components and patches; a manual download is unnecessary for a normal online installation;
+- `EOT-PC-Payload-v2.0.0-beta.4.1.zip` — PC Edition components and patches; a manual download is unnecessary for a normal online installation;
 - `SHA256SUMS.txt` — checksums for the installer and payload;
 - `release-manifest.json` — version, sizes, hashes and supported source IDs;
 - `Source code` — the installer source, not a playable copy of the game.
 
 ## Normal installation
 
-1. Download `EOTInstaller-v2.0.0-beta.4.exe` from the [official project release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4).
+1. Download `EOTInstaller-v2.0.0-beta.4.1.exe` from the [official project release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1).
 2. Run the installer.
 3. Select the installer and game language.
 4. Wait while the PC Edition components are downloaded and verified.
@@ -41,14 +41,14 @@ After installation succeeds, the source ISO, GOD or extracted console folder is 
 ## Offline or pre-downloaded payload
 
 1. Download both:
-   - `EOTInstaller-v2.0.0-beta.4.exe`;
-   - `EOT-PC-Payload-v2.0.0-beta.4.zip`.
+   - `EOTInstaller-v2.0.0-beta.4.1.exe`;
+   - `EOT-PC-Payload-v2.0.0-beta.4.1.zip`.
 2. Create a separate folder for the installer.
 3. Leave the ZIP beside the EXE; extraction is optional. If you extract it, the layout is:
 
 ```text
 EOT GitHub Installer\
-├── EOTInstaller-v2.0.0-beta.4.exe
+├── EOTInstaller-v2.0.0-beta.4.1.exe
 └── payload\
     ├── payload-manifest.json
     ├── port\
@@ -104,7 +104,7 @@ The game does not need the installer cache after a successful installation. Keep
 The installer is not currently signed with a commercial certificate, so Windows SmartScreen may warn about a newly downloaded EXE. Download it only from this GitHub release and verify its SHA-256 before running it:
 
 ```powershell
-Get-FileHash .\EOTInstaller-v2.0.0-beta.4.exe -Algorithm SHA256
+Get-FileHash .\EOTInstaller-v2.0.0-beta.4.1.exe -Algorithm SHA256
 ```
 
 Compare the result with `SHA256SUMS.txt` attached to this exact Beta 4 release. Checksums from older releases do not apply.

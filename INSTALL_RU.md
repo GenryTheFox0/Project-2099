@@ -8,20 +8,20 @@
 
 Для обычной установки нужен только:
 
-- `EOTInstaller-v2.0.0-beta.4.exe`
+- `EOTInstaller-v2.0.0-beta.4.1.exe`
 
-Инсталлер сам скачает `EOT-PC-Payload-v2.0.0-beta.4.zip`, продолжит оборванную загрузку и проверит размер и SHA-256 перед распаковкой.
+Инсталлер сам скачает `EOT-PC-Payload-v2.0.0-beta.4.1.zip`, продолжит оборванную загрузку и проверит размер и SHA-256 перед распаковкой.
 
 Остальные файлы на странице релиза:
 
-- `EOT-PC-Payload-v2.0.0-beta.4.zip` — компоненты PC Edition и патчи; вручную скачивать его для обычной установки не требуется;
+- `EOT-PC-Payload-v2.0.0-beta.4.1.zip` — компоненты PC Edition и патчи; вручную скачивать его для обычной установки не требуется;
 - `SHA256SUMS.txt` — контрольные суммы установщика и payload;
 - `release-manifest.json` — версия, размеры, хеши и список поддерживаемых источников;
 - `Source code` — исходный код установщика, а не готовая игра.
 
 ## Обычная установка
 
-1. Скачайте `EOTInstaller-v2.0.0-beta.4.exe` со страницы [официального релиза проекта](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4).
+1. Скачайте `EOTInstaller-v2.0.0-beta.4.1.exe` со страницы [официального релиза проекта](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1).
 2. Запустите установщик.
 3. Выберите язык мастера и игры.
 4. Дождитесь загрузки и проверки компонентов PC Edition.
@@ -46,14 +46,14 @@
 Этот способ пригодится для медленного Интернета, переноса на другой компьютер или локального архива.
 
 1. Скачайте два файла:
-   - `EOTInstaller-v2.0.0-beta.4.exe`;
-   - `EOT-PC-Payload-v2.0.0-beta.4.zip`.
+   - `EOTInstaller-v2.0.0-beta.4.1.exe`;
+   - `EOT-PC-Payload-v2.0.0-beta.4.1.zip`.
 2. Положите оба файла в одну папку и запустите EXE: Beta 4 умеет принять ZIP целиком.
 3. При желании можно распаковать ZIP рядом с EXE. Тогда получится такая структура:
 
 ```text
 EOT GitHub Installer\
-├── EOTInstaller-v2.0.0-beta.4.exe
+├── EOTInstaller-v2.0.0-beta.4.1.exe
 └── payload\
     ├── payload-manifest.json
     ├── port\
@@ -131,7 +131,7 @@ Support\
 Установщик пока не подписан коммерческим сертификатом, поэтому Windows SmartScreen может показать предупреждение для нового EXE. Скачивайте файл только с этого GitHub-релиза и перед запуском сравните SHA-256:
 
 ```powershell
-Get-FileHash .\EOTInstaller-v2.0.0-beta.4.exe -Algorithm SHA256
+Get-FileHash .\EOTInstaller-v2.0.0-beta.4.1.exe -Algorithm SHA256
 ```
 
 Сравните результат с `SHA256SUMS.txt` **этого же выпуска Beta 4**. Контрольные суммы прежних версий здесь не подходят.
@@ -169,7 +169,7 @@ Get-FileHash .\EOTInstaller-v2.0.0-beta.4.exe -Algorithm SHA256
 Обычному пользователю нужен один файл:
 
 ```text
-EOTInstaller-v2.0.0-beta.4.exe
+EOTInstaller-v2.0.0-beta.4.1.exe
 ```
 
 Запустили → выбрали свою копию Xbox 360 → указали пустую папку → дождались проверки → запустили `Launcher.exe`.
