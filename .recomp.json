@@ -1,0 +1,14 @@
+{
+  "$schema": "https://recomp.fyi/schema/v1.json",
+  "game": "Spider-Man: Edge of Time",
+  "system": "Xbox 360",
+  "type": "recomp",
+  "project": "Project 2099",
+  "status": "released",
+  "toolchain": "ReXGlue",
+  "targets": ["Windows"],
+  "links": [
+    { "label": "Telegram", "url": "https://t.me/teamgenrythefox" }
+  ],
+  "notes": "Beta 5 is the final planned release: only critical fixes from here on."
+}
