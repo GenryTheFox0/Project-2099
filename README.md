@@ -6,10 +6,10 @@
 <p align="center"><strong>Две эпохи. Один полноценный PC-порт.</strong><br>Two eras. One proper PC port.</p>
 
 <p align="center">
-  <a href="https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1">V2 BETA 4.1 download</a> ·
+  <a href="https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.5">Beta 5 download</a> ·
+  <a href="ANDROID.md">📱 Android</a> ·
   <a href="#installation">Installation</a> ·
   <a href="INSTALLATION.md">Six-language guides</a> ·
-  <a href="RELEASE_NOTES_BETA4_1.md">Installer hotfix</a> ·
   <a href="#known-issues">Known issues</a> ·
   <a href="https://t.me/teamgenrythefox">Telegram</a> ·
   <a href="https://discord.gg/2Yy45gJap3">Discord</a>
@@ -21,7 +21,9 @@
 
 Игровые данные в репозитории не лежат. Пользователь указывает совместимую собственную копию Xbox 360-игры — **ISO, ZIP, распакованную папку или поддерживаемый GOD/SVOD** — а установщик проверяет источник и собирает готовую PC Edition.
 
-**V2 BETA 4.1** — исправление установщика: проверка и восстановление неполного кэша PC Edition, понятная диагностика размера конкретного файла и удаление старых служебных заметок из устанавливаемого пакета. Языковые пакеты и игровой рантайм Beta 4 не менялись. Подробности — в [заметках хотфикса](RELEASE_NOTES_BETA4_1.md) и [заметках Beta 4](RELEASE_NOTES_BETA4_RU.md). Скачивайте файлы с [прямой страницы выпуска](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1) и проверяйте их по `SHA256SUMS.txt` из того же выпуска.
+**Бета 5** — самое большое обновление проекта: движок [reeot](https://github.com/goliathret/EdgeOfTimeRecomp) от Graine25, установка в один клик из любого дампа, 4K-ремастер, кровь, 9 новых костюмов, DLSS 5 и шесть языков. Скачивайте с [прямой страницы выпуска](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.5) и проверяйте файлы по `SHA256SUMS.txt` из того же выпуска.
+
+**📱 Есть и на Андроиде** — тот же Project 2099, родной порт под ARM на Vulkan, без эмулятора. Подробности и APK — на странице **[Android](ANDROID.md)**.
 
 ### Что нового в V2
 
@@ -41,6 +43,21 @@ Project 2099 остаётся бесплатным. Добровольная п�
 
 Новости: **[Telegram](https://t.me/teamgenrythefox)** · обсуждение и баг-репорты: **[Discord](https://discord.gg/2Yy45gJap3)**.
 
+## 📱 Android
+
+<p align="center"><img src="assets/android/logo.png" width="560" alt="Project 2099 — Android Edition"></p>
+
+Spider-Man: Edge of Time с Xbox 360 на телефоне — **не эмулятор**, а родной порт: игра перекомпилирована под ARM и рисует через Vulkan. Русская версия, ремастер, кровь, новые костюмы, достижения, экранные кнопки и геймпады. Первая бета, проверена на POCO X7 Pro.
+
+*The same Project 2099 on Android: a native ARM recompilation on Vulkan, not an emulator — the Russian edition, the remaster, blood, new suits, achievements, on-screen buttons and gamepads. First beta, tested on a POCO X7 Pro.*
+
+<p align="center">
+  <img src="assets/android/screen1.jpg" width="49%" alt="Android — main menu">
+  <img src="assets/android/screen2.jpg" width="49%" alt="Android — on-screen buttons">
+</p>
+
+**[Установка и подробности / Install and details → ANDROID.md](ANDROID.md)** · **[APK — Android Beta 1](https://github.com/GenryTheFox0/Project-2099/releases/tag/android-v1.0.0-beta.1)**
+
 ## What this is
 
 Edge of Time ties Peter Parker and Miguel O’Hara together across two eras: what one Spider-Man changes, the other has to survive. This PC Edition brings the Xbox 360 release to Windows through ReXGlue-based recompilation, then builds a proper PC layer around it: an installer, a launcher, keyboard and mouse controls, localization, local achievements and graphics fixes.
@@ -53,7 +70,7 @@ This public repository contains the **standalone installer and its tools**. The 
 
 ## Version and release status
 
-**V2 BETA 4.1** is an installer hotfix: incomplete payload-cache recovery, file-specific size diagnostics, and a cleaner installed package. The Beta 4 runtime and language patches are unchanged. See the [hotfix notes](RELEASE_NOTES_BETA4_1.md), download from the [specific release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1), and check the files against that release's `SHA256SUMS.txt`.
+**Beta 5** is the biggest update yet: the [reeot](https://github.com/goliathret/EdgeOfTimeRecomp) engine by Graine25, one-click install from any dump, a 4K remaster, blood, 9 new suits, DLSS 5 and six languages. Download from the [specific release](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.5) and check the files against that release's `SHA256SUMS.txt`. **Android:** see [ANDROID.md](ANDROID.md).
 
 ### V2 BETA 1 baseline
 
@@ -67,7 +84,7 @@ V2 attacks the two complaints that mattered most inside the runtime itself, not 
 
 Measured on the development machine (RTX 5060, 12 threads) after these changes: a 120 FPS target held with a median frame of 8.3 ms and p99 near 10 ms, zero in-frame pipeline builds across a session, and no 100 ms save hitch. Different hardware can still expose different problems.
 
-Download the current installer from [V2 BETA 4.1](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.4.1). This is published as a regular GitHub release; the game itself remains beta software with the limitations listed below. The generic latest endpoint remains on the runtime-update channel; use this direct link for the installer hotfix. If Beta 4 already installs and runs correctly, this installer-only hotfix does not require reinstalling the game or replacing saves.
+Download the current installer from [Beta 5](https://github.com/GenryTheFox0/Project-2099/releases/tag/v2.0.0-beta.5) (`Project2099-Beta5-Setup.exe`). The game itself remains beta software with the limitations listed below.
 
 ### Known issues
 
